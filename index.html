@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CmdRush</title>
+<meta name="description" content="Type real terminal commands against the clock. Learn Linux, Git, Docker and security commands while you play.">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #3fb950; --bad: #f85149; --warn: #d29922; --cursor: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    min-height: 100vh; display: flex; justify-content: center; padding: 24px 16px;
+  }
+  .app { width: 100%; max-width: 760px; }
+  h1 { margin: 0 0 4px; font-size: 32px; color: var(--accent); }
+  h1 span { color: var(--text); }
+  .tag { color: var(--muted); margin: 0 0 24px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .label { color: var(--muted); width: 90px; }
+  button {
+    font: inherit; background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: bold; }
+  .stats { display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .stats b { color: var(--text); }
+  #timer.low { color: var(--bad); }
+  .desc { color: var(--warn); margin-bottom: 12px; min-height: 1.4em; }
+  .target { font-size: 22px; line-height: 1.5; word-break: break-all; min-height: 1.5em; margin-bottom: 16px; }
+  .target .ok { color: var(--accent); }
+  .target .bad { color: var(--bad); background: rgba(248,81,73,.15); }
+  .target .todo { color: var(--muted); }
+  .target .cur { border-left: 2px solid var(--cursor); }
+  .prompt { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .prompt span { color: var(--accent); }
+  .prompt input {
+    flex: 1; background: transparent; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 18px; min-width: 0;
+  }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .flash-ok { animation: ok .3s; } .flash-bad { animation: bad .3s; }
+  @keyframes ok { from { border-color: var(--accent); } }
+  @keyframes bad { from { border-color: var(--bad); } }
+  .results h2 { margin-top: 0; color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 16px 0; }
+  .grid div { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .grid small { color: var(--muted); display: block; }
+  .grid b { font-size: 24px; }
+  .missed { color: var(--muted); font-size: 14px; }
+  .missed li { margin: 4px 0; } .missed code { color: var(--text); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 20px; text-align: center; }
+  footer a { color: var(--cursor); }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Cmd<span>Rush</span> &gt;_</h1>
+  <p class="tag">Type real terminal commands against the clock. Get faster. Actually learn them.</p>
+
+  <!-- Menu -->
+  <div id="menu" class="panel">
+    <div class="row"><span class="label">Pack</span><div id="packs" class="row" style="margin:0"></div></div>
+    <div class="row"><span class="label">Mode</span>
+      <button data-mode="speed" class="on">Speed</button>
+      <button data-mode="recall">Recall</button>
+    </div>
+    <div class="row"><span class="label">Time</span>
+      <button data-time="30">30s</button>
+      <button data-time="60" class="on">60s</button>
+      <button data-time="120">120s</button>
+    </div>
+    <p class="hint" id="modeHint"></p>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="start">Start (Enter)</button>
+      <span class="hint" id="best" style="margin:0"></span>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="game" class="panel hidden">
+    <div class="stats">
+      <span>Time <b id="timer">60</b></span>
+      <span>Score <b id="score">0</b></span>
+      <span>Streak <b id="streak">0</b></span>
+      <span>Pack <b id="packName"></b></span>
+    </div>
+    <div class="desc" id="desc"></div>
+    <div class="target" id="target"></div>
+    <div class="prompt" id="prompt"><span>$</span><input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the command"></div>
+    <p class="hint" id="gameHint">Press Enter to submit · Tab to skip · Esc to quit</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="panel results hidden">
+    <h2 id="resultTitle">Time's up!</h2>
+    <div class="grid">
+      <div><small>Score</small><b id="rScore">0</b></div>
+      <div><small>WPM</small><b id="rWpm">0</b></div>
+      <div><small>Accuracy</small><b id="rAcc">0%</b></div>
+      <div><small>Best streak</small><b id="rStreak">0</b></div>
+    </div>
+    <div id="missedWrap" class="missed"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="again">Play again (Enter)</button>
+      <button id="toMenu">Menu</button>
+      <button id="share">Copy score</button>
+    </div>
+  </div>
+
+  <footer>Open source · <a href="https://github.com/y4sh-0day/top">Star it on GitHub</a> · Also playable in your terminal</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const PACK_LABELS = { all: "All", linux: "Linux", git: "Git", docker: "Docker", security: "Security" };
+const MODE_HINTS = {
+  speed: "Speed: the command is shown. Type it as fast and accurately as you can.",
+  recall: "Recall: only the description is shown. Type the command from memory. Tab reveals it (no points)."
+};
+
+let DATA = {}, cfg = { pack: "all", mode: "speed", time: 60 }, s = null, tick = null;
+
+function bestKey() { return `cmdrush:best:${cfg.pack}:${cfg.mode}:${cfg.time}`; }
+function showBest() {
+  const b = store.get(bestKey());
+  $("best").textContent = b ? `Best: ${b} pts` : "";
+  $("modeHint").textContent = MODE_HINTS[cfg.mode];
+}
+function show(id) { ["menu", "game", "results"].forEach(x => $(x).classList.toggle("hidden", x !== id)); }
+
+function buildMenu() {
+  const packs = ["all", ...Object.keys(DATA)];
+  $("packs").innerHTML = packs.map(p =>
+    `<button data-pack="${p}" class="${p === cfg.pack ? "on" : ""}">${PACK_LABELS[p] || p}</button>`).join("");
+  document.querySelectorAll("[data-pack],[data-mode],[data-time]").forEach(b => b.onclick = () => {
+    const key = b.dataset.pack ? "pack" : b.dataset.mode ? "mode" : "time";
+    cfg[key] = key === "time" ? +b.dataset.time : b.dataset[key];
+    document.querySelectorAll(`[data-${key}]`).forEach(x => x.classList.toggle("on", x === b));
+    store.set("cmdrush:cfg", cfg);
+    showBest();
+  });
+  showBest();
+}
+
+function pool() {
+  const list = cfg.pack === "all" ? Object.values(DATA).flat() : DATA[cfg.pack];
+  return [...list].sort(() => Math.random() - 0.5);
+}
+
+function start() {
+  s = { queue: pool(), i: 0, score: 0, streak: 0, bestStreak: 0, chars: 0, keys: 0, errors: 0,
+        missed: [], left: cfg.time, revealed: false, startedAt: Date.now() };
+  $("packName").textContent = PACK_LABELS[cfg.pack];
+  show("game");
+  next(false);
+  $("input").focus();
+  clearInterval(tick);
+  updateTimer();
+  tick = setInterval(() => { s.left--; updateTimer(); if (s.left <= 0) end(); }, 1000);
+}
+
+function current() {
+  if (s.i >= s.queue.length) { s.queue = pool(); s.i = 0; }
+  return s.queue[s.i];
+}
+function next(advance = true) {
+  if (advance) s.i++;
+  s.revealed = false;
+  $("input").value = "";
+  $("desc").textContent = current().desc;
+  render();
+}
+function render() {
+  const target = current().cmd, typed = $("input").value;
+  const hide = cfg.mode === "recall" && !s.revealed;
+  if (hide) {
+    $("target").innerHTML = `<span class="todo">${"_ ".repeat(Math.min(target.length, 24)).trim()}</span>`;
+    return;
+  }
+  let html = "";
+  for (let i = 0; i < target.length; i++) {
+    const ch = target[i] === " " ? "&nbsp;" : escapeHtml(target[i]);
+    let cls = i < typed.length ? (typed[i] === target[i] ? "ok" : "bad") : "todo";
+    if (i === typed.length) cls += " cur";
+    html += `<span class="${cls}">${ch}</span>`;
+  }
+  $("target").innerHTML = html;
+}
+function escapeHtml(c) { return ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c] || c; }
+
+function updateTimer() {
+  $("timer").textContent = s.left;
+  $("timer").classList.toggle("low", s.left <= 10);
+  $("score").textContent = s.score;
+  $("streak").textContent = s.streak;
+}
+function flash(ok) {
+  const p = $("prompt");
+  p.classList.remove("flash-ok", "flash-bad"); void p.offsetWidth;
+  p.classList.add(ok ? "flash-ok" : "flash-bad");
+}
+
+function submit() {
+  const item = current(), typed = $("input").value.trim();
+  if (!typed) return;
+  if (typed === item.cmd) {
+    const pts = s.revealed ? 0 : (cfg.mode === "recall" ? 2 : 1) + Math.floor(s.streak / 5);
+    s.score += pts;
+    s.chars += item.cmd.length + 1;
+    s.streak++; s.bestStreak = Math.max(s.bestStreak, s.streak);
+    flash(true); next();
+  } else {
+    s.streak = 0; flash(false);
+    if (cfg.mode === "recall") { s.revealed = true; render(); }
+  }
+  updateTimer();
+}
+function skip() {
+  const item = current();
+  if (cfg.mode === "recall" && !s.revealed) { s.revealed = true; render(); return; }
+  s.missed.push(item); s.streak = 0; updateTimer(); next();
+}
+
+let endedAt = 0;
+function end() {
+  clearInterval(tick);
+  endedAt = Date.now();
+  const mins = Math.max((Date.now() - s.startedAt) / 60000, 1 / 60);
+  const wpm = Math.round(s.chars / 5 / mins);
+  const acc = s.keys ? Math.max(0, Math.round((1 - s.errors / s.keys) * 100)) : 0;
+  const prev = store.get(bestKey()) || 0;
+  const isBest = s.score > prev;
+  if (isBest) store.set(bestKey(), s.score);
+  $("resultTitle").textContent = isBest && s.score > 0 ? "New best score!" : "Time's up!";
+  $("rScore").textContent = s.score; $("rWpm").textContent = wpm;
+  $("rAcc").textContent = acc + "%"; $("rStreak").textContent = s.bestStreak;
+  s.wpm = wpm;
+  $("missedWrap").innerHTML = s.missed.length
+    ? `<p>Commands to practice:</p><ul>${s.missed.slice(0, 8).map(m =>
+        `<li><code>${[...m.cmd].map(escapeHtml).join("")}</code> - ${m.desc}</li>`).join("")}</ul>` : "";
+  show("results");
+}
+
+$("input").addEventListener("input", e => {
+  if (e.inputType && e.inputType.startsWith("insert")) {
+    s.keys++;
+    const typed = $("input").value, pos = typed.length - 1, target = current().cmd;
+    if (typed[pos] !== target[pos] && !(cfg.mode === "recall" && !s.revealed)) s.errors++;
+  }
+  render();
+});
+$("input").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); submit(); }
+  else if (e.key === "Tab") { e.preventDefault(); skip(); }
+  else if (e.key === "Escape") { clearInterval(tick); show("menu"); showBest(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  if (!$("menu").classList.contains("hidden")) start();
+  else if (!$("results").classList.contains("hidden") && Date.now() - endedAt > 800) start();
+});
+$("start").onclick = start;
+$("again").onclick = start;
+$("toMenu").onclick = () => { show("menu"); showBest(); };
+$("share").onclick = () => {
+  const text = `I scored ${s.score} points (${s.wpm} WPM) on CmdRush, ${PACK_LABELS[cfg.pack]} pack! https://github.com/y4sh-0day/top`;
+  navigator.clipboard?.writeText(text).then(() => $("share").textContent = "Copied!", () => {});
+};
+$("game").addEventListener("click", () => $("input").focus());
+
+Object.assign(cfg, store.get("cmdrush:cfg") || {});
+document.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("on", x.dataset.mode === cfg.mode));
+document.querySelectorAll("[data-time]").forEach(x => x.classList.toggle("on", +x.dataset.time === cfg.time));
+fetch("commands.json").then(r => r.json()).then(d => { DATA = d; if (!DATA[cfg.pack] && cfg.pack !== "all") cfg.pack = "all"; buildMenu(); })
+  .catch(() => { $("menu").innerHTML = "<p>Could not load commands.json. Run <code>python3 -m http.server</code> in this folder and open http://localhost:8000</p>"; });
+</script>
+</body>
+</html>
