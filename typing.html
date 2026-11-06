@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CmdRush Typing</title>
+<meta name="description" content="Learn to touch type fast on Mac or phone. Finger guide, hand placement, lessons and speed tests.">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #3fb950; --bad: #f85149; --warn: #d29922; --cursor: #58a6ff;
+    --L5: #bc8cff; --L4: #58a6ff; --L3: #3fb950; --L2: #f0883e;
+    --R2: #e3b341; --R3: #3fb950; --R4: #58a6ff; --R5: #bc8cff; --T: #8b949e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    min-height: 100vh; display: flex; justify-content: center; padding: 24px 16px;
+  }
+  .app { width: 100%; max-width: 900px; }
+  nav { display: flex; gap: 16px; margin-bottom: 18px; font-size: 14px; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; padding-bottom: 4px; }
+  nav a.on { color: var(--accent); border-bottom: 2px solid var(--accent); }
+  h1 { margin: 0 0 4px; font-size: 30px; color: var(--accent); }
+  h1 span { color: var(--text); }
+  .tag { color: var(--muted); margin: 0 0 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .label { color: var(--muted); width: 72px; }
+  button {
+    font: inherit; font-size: 14px; background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 12px; cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: bold; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+
+  /* guide */
+  details summary { cursor: pointer; color: var(--warn); font-weight: bold; }
+  details ol { padding-left: 20px; line-height: 1.6; margin: 12px 0 0; }
+  details li { margin-bottom: 4px; }
+  kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 0.9em; }
+
+  /* typing area */
+  .stats { display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .stats b { color: var(--text); }
+  #time.low { color: var(--bad); }
+  .textbox { position: relative; height: calc(3 * 1.7em); overflow: hidden; font-size: clamp(18px, 4.2vw, 26px); line-height: 1.7; cursor: text; }
+  #words { transition: transform .15s; word-break: break-word; }
+  #words span { color: var(--muted); }
+  #words span.ok { color: var(--text); }
+  #words span.bad { color: var(--bad); background: rgba(248,81,73,.18); border-radius: 2px; }
+  #words span.cur { box-shadow: inset 2px 0 0 var(--cursor); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { box-shadow: none; } }
+  #typer {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px;
+    border: 0; background: transparent; color: transparent; resize: none; caret-color: transparent;
+  }
+  .focus-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(13,17,23,.75); color: var(--warn); font-size: 16px; pointer-events: none; }
+  .finger-tip { margin-top: 10px; min-height: 1.4em; font-size: 15px; }
+  .finger-tip b { padding: 1px 6px; border-radius: 4px; color: #0d1117; }
+
+  /* keyboard */
+  .kb { display: flex; flex-direction: column; gap: 5px; user-select: none; }
+  .kb-row { display: flex; gap: 5px; }
+  .key {
+    flex: 1 1 0; min-width: 0; height: 42px; border-radius: 6px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative;
+    background: color-mix(in srgb, var(--f, var(--T)) 14%, var(--panel)); color: var(--text);
+    transition: background .1s, transform .1s;
+  }
+  .key.mod { font-size: 11px; color: var(--muted); }
+  .key.bump::after { content: ""; position: absolute; bottom: 7px; width: 10px; height: 2px; background: var(--muted); border-radius: 1px; }
+  .key.next { background: var(--f); color: #0d1117; font-weight: bold; transform: translateY(-2px); box-shadow: 0 0 12px var(--f); }
+  .key.hit { background: color-mix(in srgb, var(--accent) 45%, var(--panel)); }
+  .key.miss { background: color-mix(in srgb, var(--bad) 55%, var(--panel)); }
+  .hands { display: block; width: 100%; max-width: 520px; margin: 14px auto 0; }
+  .hands .finger { opacity: .3; transition: opacity .1s; }
+  .hands .finger.active { opacity: 1; stroke: #fff; stroke-width: 2; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  /* results */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 14px 0; }
+  .grid div { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .grid small { color: var(--muted); display: block; }
+  .grid b { font-size: 26px; }
+  #rTitle { margin: 0; color: var(--accent); }
+  #rAdvice { color: var(--warn); }
+  .weak kbd { margin-right: 6px; }
+
+  .hidden { display: none !important; }
+  .phone-only { display: none; }
+  body.phone .phone-only { display: block; }
+  body.phone span.phone-only { display: inline; }
+  body.phone .app { display: flex; flex-direction: column; }
+  body.phone #play, body.phone #results { order: 1; }
+  body.phone #settings { order: 2; }
+  body.phone #guide { order: 3; }
+  body.phone footer { order: 4; }
+  body.phone .desk-only { display: none; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
+  footer a { color: var(--cursor); }
+  @media (max-width: 600px) {
+    .key { height: 34px; font-size: 11px; } .key.mod { font-size: 8px; }
+    .label { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav><a href="./">CmdRush: commands</a><a href="typing.html" class="on">Typing trainer</a></nav>
+  <h1>Type<span>Fast</span> &gt;_</h1>
+  <p class="tag">Learn to touch type with the right fingers. <span class="desk-only">Built for the Mac keyboard.</span><span class="phone-only" id="phoneTag"></span></p>
+
+  <!-- Hand placement guide -->
+  <details class="panel" id="guide" open>
+    <summary><span class="desk-only">How to place your hands (Mac)</span><span class="phone-only">How to type fast on a phone</span></summary>
+    <ol class="desk-only">
+      <li>Find the two little <b>bumps</b> on the <kbd>F</kbd> and <kbd>J</kbd> keys. Put your <b>left index finger on F</b> and your <b>right index finger on J</b>. You can find them without looking.</li>
+      <li>Rest the other fingers next to them: left hand on <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd>, right hand on <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>;</kbd>. This is the <b>home row</b>.</li>
+      <li>Rest both <b>thumbs</b> lightly on the space bar. The <kbd>⌘ command</kbd> keys next to it are also pressed with your thumbs.</li>
+      <li>Each finger owns one coloured column on the keyboard below. Reach up or down, press, then <b>go back to the home row</b>.</li>
+      <li>For capital letters, hold <kbd>shift</kbd> with the pinky of the <b>other</b> hand. On a Mac, <kbd>return</kbd> is Enter and <kbd>delete</kbd> is Backspace (both right pinky).</li>
+      <li>Keep your wrists slightly raised, sit up straight, and <b>look at the screen, not your hands</b>.</li>
+      <li><b>Accuracy first.</b> Aim for 95% or more, and the speed comes by itself. Practise 10 minutes a day.</li>
+    </ol>
+    <ol class="phone-only">
+      <li>Hold the phone with <b>both hands</b> and type with <b>both thumbs</b>. The left thumb types the left half (Q W E R T, A S D F G, Z X C V), and the right thumb types the rest.</li>
+      <li>Turn the phone sideways (<b>landscape</b>) for bigger keys.</li>
+      <li>For honest practice, turn off auto-correct. On iPhone: Settings → General → Keyboard → Auto-Correction. On Android (Gboard): Settings → Text correction.</li>
+      <li>Keep your eyes on the text, not on the keyboard.</li>
+      <li><b>Accuracy first.</b> Aim for 95% or more. Speed comes with daily practice.</li>
+    </ol>
+  </details>
+
+  <!-- Settings -->
+  <div class="panel" id="settings">
+    <div class="row"><span class="label">Lesson</span><div id="lessons" class="row" style="margin:0"></div></div>
+    <div class="row"><span class="label">Time</span>
+      <button data-time="30">30s</button><button data-time="60">60s</button><button data-time="120">2 min</button><button data-time="300">5 min</button>
+    </div>
+    <p class="hint" id="lessonHint"></p>
+  </div>
+
+  <!-- Typing -->
+  <div class="panel" id="play">
+    <div class="stats">
+      <span>Time <b id="time">60</b></span>
+      <span>WPM <b id="wpm">0</b></span>
+      <span>Accuracy <b id="acc">100%</b></span>
+      <span>Best <b id="best">-</b></span>
+    </div>
+    <div class="textbox" id="textbox">
+      <div id="words"></div>
+      <textarea id="typer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Type here"></textarea>
+      <div class="focus-msg" id="focusMsg">Click or tap here and start typing</div>
+    </div>
+    <div class="finger-tip desk-only" id="fingerTip"></div>
+    <p class="hint">The timer starts when you type the first letter · <span class="desk-only"><kbd>esc</kbd> restarts</span><button id="restart" style="padding:3px 10px;margin-left:6px">Restart</button></p>
+  </div>
+
+  <!-- Results -->
+  <div class="panel hidden" id="results">
+    <h2 id="rTitle">Done!</h2>
+    <div class="grid">
+      <div><small>Speed</small><b id="rWpm">0</b> <small style="display:inline">WPM</small></div>
+      <div><small>Accuracy</small><b id="rAcc">0%</b></div>
+      <div><small>Correct chars</small><b id="rChars">0</b></div>
+      <div><small>Mistakes</small><b id="rErr">0</b></div>
+    </div>
+    <p id="rAdvice"></p>
+    <p class="weak" id="rWeak"></p>
+    <div class="row">
+      <button class="primary" id="again">Try again (Enter)</button>
+      <button id="share">Copy score</button>
+    </div>
+  </div>
+
+  <!-- Keyboard + hands -->
+  <div class="panel desk-only" id="kbPanel">
+    <div class="kb" id="kb"></div>
+    <svg class="hands" id="hands" viewBox="0 0 420 170" aria-hidden="true"></svg>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <footer>Part of <a href="./">CmdRush</a> · <a href="https://github.com/y4sh-0day/Top">Star it on GitHub</a></footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const isPhone = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 820;
+if (isPhone) { document.body.classList.add("phone"); $("phoneTag").textContent = "Thumb-typing mode for your phone."; }
+
+/* ---------- Fingers ---------- */
+const FINGER_KEYS = {
+  L5: "`1qaz", L4: "2wsx", L3: "3edc", L2: "45rtfgvb",
+  R2: "67yuhjnm", R3: "8ik,", R4: "9ol.", R5: "0-=p[]\\;'/"
+};
+const FINGER_NAMES = {
+  L5: "left pinky", L4: "left ring finger", L3: "left middle finger", L2: "left index finger",
+  R2: "right index finger", R3: "right middle finger", R4: "right ring finger", R5: "right pinky", T: "thumb"
+};
+const HOME = { L5: "a", L4: "s", L3: "d", L2: "f", R2: "j", R3: "k", R4: "l", R5: ";" };
+const fingerOf = {};
+for (const [f, keys] of Object.entries(FINGER_KEYS)) for (const k of keys) fingerOf[k] = f;
+Object.assign(fingerOf, { delete: "R5", return: "R5", shiftR: "R5", tab: "L5", caps: "L5", shiftL: "L5",
+  space: "T", command: "T", command2: "T", fn: "L5", control: "L5", option: "L5", option2: "R5" });
+const SHIFTED = { "~": "`", "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8",
+  "(": "9", ")": "0", "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";", '"': "'", "<": ",", ">": ".", "?": "/" };
+
+function keyFor(ch) {
+  if (ch === undefined) return null;
+  if (ch === " ") return { key: "space", shift: null };
+  let key = ch, shift = false;
+  if (/[A-Z]/.test(ch)) { key = ch.toLowerCase(); shift = true; }
+  else if (SHIFTED[ch]) { key = SHIFTED[ch]; shift = true; }
+  if (!fingerOf[key]) return null;
+  return { key, shift: shift ? (fingerOf[key][0] === "L" ? "shiftR" : "shiftL") : null };
+}
+
+/* ---------- Mac keyboard ---------- */
+const ROWS = [
+  [..."`1234567890-=", { k: "delete", w: 1.6 }],
+  [{ k: "tab", w: 1.5 }, ..."qwertyuiop[]\\"],
+  [{ k: "caps", l: "caps lock", w: 1.8 }, ..."asdfghjkl;'", { k: "return", w: 1.8 }],
+  [{ k: "shiftL", l: "shift", w: 2.35 }, ..."zxcvbnm,./", { k: "shiftR", l: "shift", w: 2.35 }],
+  [{ k: "fn", w: 1 }, { k: "control", w: 1 }, { k: "option", w: 1.1 }, { k: "command", l: "⌘ cmd", w: 1.35 },
+   { k: "space", l: "", w: 5.6 }, { k: "command2", l: "⌘ cmd", w: 1.35 }, { k: "option2", l: "option", w: 1.1 }]
+];
+const keyEls = {};
+function buildKeyboard() {
+  $("kb").innerHTML = "";
+  for (const row of ROWS) {
+    const r = document.createElement("div"); r.className = "kb-row";
+    for (const item of row) {
+      const k = typeof item === "string" ? item : item.k;
+      const el = document.createElement("div");
+      el.className = "key" + (typeof item === "string" ? "" : " mod") + (k === "f" || k === "j" ? " bump" : "");
+      el.textContent = typeof item === "string" ? item.toUpperCase() : (item.l ?? item.k);
+      if (item.w) el.style.flexGrow = item.w;
+      el.style.setProperty("--f", `var(--${fingerOf[k] || "T"})`);
+      r.appendChild(el); keyEls[k] = el;
+    }
+    $("kb").appendChild(r);
+  }
+}
+
+/* ---------- Hands (simple diagram) ---------- */
+function buildHands() {
+  const L = [ // left hand: pinky -> thumb
+    { f: "L5", x: 18, y: 52, w: 26, h: 62 }, { f: "L4", x: 50, y: 28, w: 28, h: 86 },
+    { f: "L3", x: 84, y: 16, w: 28, h: 98 }, { f: "L2", x: 118, y: 30, w: 28, h: 84 }
+  ];
+  let svg = "";
+  const finger = (f, x, y, w, h, extra = "") =>
+    `<rect class="finger" data-f="${f}" x="${x}" y="${y}" width="${w}" height="${h}" rx="${w / 2}" fill="var(--${f})" ${extra}/>`;
+  for (const p of L) {
+    svg += finger(p.f, p.x, p.y, p.w, p.h);
+    const m = "R" + p.f[1];
+    svg += finger(m, 420 - p.x - p.w, p.y, p.w, p.h);
+  }
+  svg += finger("T", 150, 92, 24, 62, 'transform="rotate(-35 162 123)"');
+  svg += finger("T", 246, 92, 24, 62, 'transform="rotate(35 258 123)"');
+  svg += `<rect x="18" y="104" width="134" height="58" rx="22" fill="#30363d"/>`;
+  svg += `<rect x="268" y="104" width="134" height="58" rx="22" fill="#30363d"/>`;
+  svg += `<text x="85" y="139" fill="#8b949e" font-size="13" text-anchor="middle" font-family="monospace">LEFT</text>`;
+  svg += `<text x="335" y="139" fill="#8b949e" font-size="13" text-anchor="middle" font-family="monospace">RIGHT</text>`;
+  $("hands").innerHTML = svg;
+  $("legend").innerHTML = [["L5", "pinkies"], ["L4", "ring"], ["L3", "middle"], ["L2", "left index"], ["R2", "right index"], ["T", "thumbs"]]
+    .map(([f, n]) => `<span><i style="background:var(--${f})"></i>${n}</span>`).join("");
+}
+
+function showNextKey(ch) {
+  document.querySelectorAll(".key.next").forEach(e => e.classList.remove("next"));
+  document.querySelectorAll(".hands .finger.active").forEach(e => e.classList.remove("active"));
+  const info = keyFor(ch);
+  if (!info) { $("fingerTip").innerHTML = ""; return; }
+  const parts = [info.key, info.shift].filter(Boolean);
+  parts.forEach(k => {
+    keyEls[k]?.classList.add("next");
+    document.querySelectorAll(`.hands .finger[data-f="${fingerOf[k]}"]`).forEach(e => e.classList.add("active"));
+  });
+  const f = fingerOf[info.key];
+  const label = info.key === "space" ? "space" : (ch === " " ? "space" : ch);
+  let tip = `Next: <b style="background:var(--${f})">${escapeHtml(label)}</b> with your ${FINGER_NAMES[f]}`;
+  if (info.shift) tip += ` + <b style="background:var(--${fingerOf[info.shift]})">shift</b> with your ${FINGER_NAMES[fingerOf[info.shift]]}`;
+  if (f !== "T" && HOME[f] && HOME[f] !== info.key) tip += ` <span style="color:var(--muted)">(home key: ${HOME[f].toUpperCase()})</span>`;
+  $("fingerTip").innerHTML = tip;
+}
+function flashKey(ch, ok) {
+  const info = keyFor(ch); if (!info) return;
+  const el = keyEls[info.key]; if (!el) return;
+  el.classList.add(ok ? "hit" : "miss");
+  setTimeout(() => el.classList.remove("hit", "miss"), 160);
+}
+function escapeHtml(c) { return c.replace(/[<>&"']/g, x => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[x]); }
+
+/* ---------- Lessons ---------- */
+const WORDS = ("the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us is was are has had did said very down call long find more here thing tell few great where help through much before line right too mean old same move try kind hand high place small large show house world own school still point end play home read last city never next start land light near idea fast game type key word letter text quick learn skill write speed practice finger keyboard screen class money water food dark sun page".split(" "));
+const EXTRA_HOME = "a as ad add ads ask asks all alas dad dads sad lad lads fad fall falls hall halls gal gals gas glad glass flag flags flask half has had hash dash lash salad salsa shall jag jags lag lags sag sash slash flash".split(" ");
+const LESSONS = [
+  { id: "home", name: "Home row", letters: "asdfghjkl", hint: "Only the home row: A S D F G H J K L. Keep your index fingers on the F and J bumps." },
+  { id: "top", name: "+ Top row", letters: "asdfghjklqwertyuiop", hint: "Adds Q W E R T Y U I O P. Reach up, then come back to the home row." },
+  { id: "all", name: "All letters", letters: "abcdefghijklmnopqrstuvwxyz", hint: "Every letter, using real words. Use the correct finger for each key." },
+  { id: "caps", name: "Capitals & punctuation", letters: "*", hint: "Sentences with capitals, commas and full stops. Hold shift with the pinky of the other hand." },
+  { id: "numbers", name: "Numbers", letters: "#", hint: "Words mixed with numbers. Reach up from the home row and come back." }
+];
+const pick = a => a[Math.random() * a.length | 0];
+function randomGroup(letters) {
+  let s = ""; const n = 2 + (Math.random() * 4 | 0);
+  for (let i = 0; i < n; i++) s += pick(letters);
+  return s;
+}
+function genWords(lesson, count) {
+  const out = [];
+  if (lesson.letters === "*") {
+    let sentence = [];
+    while (out.length < count) {
+      let w = pick(WORDS);
+      if (!sentence.length) w = w[0].toUpperCase() + w.slice(1);
+      sentence.push(w);
+      if (sentence.length > 3 && Math.random() < 0.25) { sentence[sentence.length - 1] += pick([".", ".", "?", "!"]); out.push(...sentence); sentence = []; }
+      else if (sentence.length > 2 && Math.random() < 0.12) sentence[sentence.length - 1] += ",";
+    }
+    return out.slice(0, count);
+  }
+  if (lesson.letters === "#") {
+    while (out.length < count) out.push(Math.random() < 0.35 ? String(Math.random() * (Math.random() < .5 ? 100 : 10000) | 0) : pick(WORDS));
+    return out;
+  }
+  const ok = w => [...w].every(c => lesson.letters.includes(c));
+  const pool = [...new Set([...WORDS, ...EXTRA_HOME])].filter(ok);
+  while (out.length < count) out.push(pool.length > 20 || Math.random() < 0.6 ? pick(pool) : randomGroup(lesson.letters));
+  return out;
+}
+
+/* ---------- Game ---------- */
+let cfg = Object.assign({ lesson: "home", time: 60 }, store.get("typefast:cfg") || {});
+if (!LESSONS.some(l => l.id === cfg.lesson)) cfg.lesson = "home";
+let st;
+
+function lesson() { return LESSONS.find(l => l.id === cfg.lesson); }
+function bestKey() { return `typefast:best:${cfg.lesson}:${cfg.time}`; }
+
+function buildSettings() {
+  $("lessons").innerHTML = LESSONS.map(l => `<button data-lesson="${l.id}">${l.name}</button>`).join("");
+  document.querySelectorAll("[data-lesson],[data-time]").forEach(b => b.onclick = () => {
+    if (b.dataset.lesson) cfg.lesson = b.dataset.lesson; else cfg.time = +b.dataset.time;
+    store.set("typefast:cfg", cfg);
+    reset();
+  });
+}
+function syncSettings() {
+  document.querySelectorAll("[data-lesson]").forEach(b => b.classList.toggle("on", b.dataset.lesson === cfg.lesson));
+  document.querySelectorAll("[data-time]").forEach(b => b.classList.toggle("on", +b.dataset.time === cfg.time));
+  $("lessonHint").textContent = lesson().hint;
+}
+
+function reset() {
+  clearInterval(st?.timer);
+  st = { text: genWords(lesson(), 120).join(" "), typed: "", keys: 0, errors: 0, weak: {},
+         started: 0, left: cfg.time, timer: null, done: false };
+  $("words").innerHTML = [...st.text].map(c => `<span>${escapeHtml(c)}</span>`).join("");
+  $("words").style.transform = "";
+  $("typer").value = "";
+  $("results").classList.add("hidden");
+  $("play").classList.remove("hidden");
+  syncSettings();
+  const b = store.get(bestKey());
+  $("best").textContent = b ? b + " wpm" : "-";
+  $("time").textContent = cfg.time; $("time").classList.remove("low");
+  $("wpm").textContent = 0; $("acc").textContent = "100%";
+  paint(0, 0);
+  if (!isPhone) $("typer").focus();
+}
+
+function paint(from, to) {
+  const spans = $("words").children;
+  for (let i = Math.max(0, from - 1); i <= Math.min(to + 1, spans.length - 1); i++) {
+    let cls = "";
+    if (i < st.typed.length) cls = st.typed[i] === st.text[i] ? "ok" : "bad";
+    if (i === st.typed.length) cls += " cur";
+    spans[i].className = cls;
+  }
+  const cur = spans[st.typed.length];
+  if (cur) {
+    const lh = cur.offsetHeight || 40;
+    $("words").style.transform = `translateY(${-Math.max(0, cur.offsetTop - lh)}px)`;
+  }
+  showNextKey(st.text[st.typed.length]);
+}
+
+function correctChars() { let n = 0; for (let i = 0; i < st.typed.length; i++) if (st.typed[i] === st.text[i]) n++; return n; }
+function liveStats() {
+  const mins = Math.max((Date.now() - st.started) / 60000, 1 / 60);
+  const wpm = Math.round(correctChars() / 5 / mins);
+  const acc = st.keys ? Math.max(0, Math.round((1 - st.errors / st.keys) * 100)) : 100;
+  return { wpm, acc };
+}
+
+$("typer").addEventListener("input", () => {
+  if (st.done) { $("typer").value = st.typed; return; }
+  let v = $("typer").value.replace(/\n/g, "");
+  if (v.length > st.text.length) v = v.slice(0, st.text.length);
+  const old = st.typed;
+  let start = 0;
+  while (start < old.length && start < v.length && old[start] === v[start]) start++;
+  for (let i = start; i < v.length; i++) {
+    st.keys++;
+    const ok = v[i] === st.text[i];
+    if (!ok) { st.errors++; const t = st.text[i]; st.weak[t] = (st.weak[t] || 0) + 1; }
+    if (i === v.length - 1) flashKey(v[i], ok);
+  }
+  if (!st.started && v.length) {
+    st.started = Date.now();
+    st.timer = setInterval(() => {
+      st.left = cfg.time - Math.floor((Date.now() - st.started) / 1000);
+      $("time").textContent = Math.max(0, st.left);
+      $("time").classList.toggle("low", st.left <= 10);
+      const s = liveStats(); $("wpm").textContent = s.wpm; $("acc").textContent = s.acc + "%";
+      if (st.left <= 0) finish();
+    }, 250);
+  }
+  st.typed = v;
+  if ($("typer").value !== v) $("typer").value = v;
+  paint(start, Math.max(old.length, v.length));
+  // keep adding words so fast typists never run out
+  if (st.text.length - v.length < 80) {
+    const more = " " + genWords(lesson(), 40).join(" ");
+    st.text += more;
+    $("words").insertAdjacentHTML("beforeend", [...more].map(c => `<span>${escapeHtml(c)}</span>`).join(""));
+  }
+});
+$("typer").addEventListener("keydown", e => {
+  if (e.key === "Escape") { e.preventDefault(); reset(); }
+  else if (e.key === "Tab" || e.key.startsWith("Arrow") || e.key === "Enter") e.preventDefault();
+});
+$("typer").addEventListener("focus", () => {
+  $("focusMsg").classList.add("hidden");
+  if (isPhone) setTimeout(() => $("play").scrollIntoView({ block: "start", behavior: "smooth" }), 300);
+});
+$("typer").addEventListener("blur", () => $("focusMsg").classList.remove("hidden"));
+$("textbox").addEventListener("click", () => $("typer").focus());
+
+let endedAt = 0;
+function finish() {
+  clearInterval(st.timer);
+  st.done = true; endedAt = Date.now();
+  $("typer").blur();
+  const { wpm, acc } = liveStats();
+  const prev = store.get(bestKey()) || 0;
+  const isBest = wpm > prev && acc >= 80;
+  if (isBest) store.set(bestKey(), wpm);
+  $("rTitle").textContent = isBest ? "New personal best!" : "Done!";
+  $("rWpm").textContent = wpm; $("rAcc").textContent = acc + "%";
+  $("rChars").textContent = correctChars(); $("rErr").textContent = st.errors;
+  $("rAdvice").textContent =
+    acc < 90 ? "Slow down a little. Accuracy builds speed, and 95% is the goal." :
+    acc < 95 ? "Good! Try to get your accuracy above 95% before pushing for more speed." :
+    wpm < 40 ? "Great accuracy! Keep practising daily and your speed will climb." :
+    "Excellent! Try a longer test or a harder lesson.";
+  const weak = Object.entries(st.weak).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  $("rWeak").innerHTML = weak.length ? "Keys to practise: " + weak.map(([k, n]) =>
+    `<kbd>${k === " " ? "space" : escapeHtml(k)}</kbd>×${n}`).join(" ") : "";
+  st.result = { wpm, acc };
+  $("play").classList.add("hidden");
+  $("results").classList.remove("hidden");
+  showNextKey(undefined);
+}
+
+$("restart").onclick = reset;
+$("again").onclick = reset;
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && st.done && Date.now() - endedAt > 800) reset();
+});
+$("share").onclick = () => {
+  const text = `I type ${st.result.wpm} WPM at ${st.result.acc}% accuracy on CmdRush TypeFast (${lesson().name}). Try it: https://y4sh-0day.github.io/Top/typing.html`;
+  navigator.clipboard?.writeText(text).then(() => $("share").textContent = "Copied!", () => {});
+};
+
+if (store.get("typefast:seenGuide")) $("guide").open = false;
+store.set("typefast:seenGuide", true);
+buildKeyboard(); buildHands(); buildSettings(); reset();
+</script>
+</body>
+</html>
