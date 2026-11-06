@@ -39,6 +39,16 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## ⌨️ Typing trainer (Mac and phone)
+
+Learn to **touch type** at **https://y4sh-0day.github.io/Top/typing.html**
+
+- A Mac keyboard and two hands show **which finger to use** for every key
+- A guide to where to put your hands (home row, F and J bumps, thumbs, shift)
+- Lessons: Home row → Top row → All letters → Capitals and punctuation → Numbers
+- Live WPM and accuracy, best scores, and a list of your weakest keys
+- On a **phone** it switches to thumb-typing tips and your phone's keyboard
+
 ## 💻 Play in your terminal
 
 ```bash

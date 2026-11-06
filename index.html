@@ -58,10 +58,14 @@
   .hidden { display: none; }
   footer { color: var(--muted); font-size: 13px; margin-top: 20px; text-align: center; }
   footer a { color: var(--cursor); }
+  nav { display: flex; gap: 16px; margin-bottom: 18px; font-size: 14px; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; padding-bottom: 4px; }
+  nav a.on { color: var(--accent); border-bottom: 2px solid var(--accent); }
 </style>
 </head>
 <body>
 <div class="app">
+  <nav><a href="./" class="on">CmdRush: commands</a><a href="typing.html">Typing trainer</a></nav>
   <h1>Cmd<span>Rush</span> &gt;_</h1>
   <p class="tag">Type real terminal commands against the clock. Get faster. Actually learn them.</p>
 
