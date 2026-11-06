@@ -6,7 +6,7 @@
 
 Linux · Git · Docker · Security, playable in your **browser** *or* your **terminal**.
 
-[**▶ Play in the browser**](https://y4sh-0day.github.io/top/) · [Terminal version](#-play-in-your-terminal) · [Add commands](#-contributing)
+[**▶ Play in the browser**](https://y4sh-0day.github.io/Top/) · [Terminal version](#-play-in-your-terminal) · [Add commands](#-contributing)
 
 </div>
 
@@ -26,13 +26,13 @@ Most typing games make you type random English words. **CmdRush makes you type t
 
 ## 🌐 Play in the browser
 
-Play the live version at **https://y4sh-0day.github.io/top/**
+Play the live version at **https://y4sh-0day.github.io/Top/**
 
 Or run it locally:
 
 ```bash
-git clone https://github.com/y4sh-0day/top.git
-cd top
+git clone https://github.com/y4sh-0day/Top.git
+cd Top
 python3 -m http.server 8000
 # open http://localhost:8000
 ```

@@ -115,7 +115,7 @@
     </div>
   </div>
 
-  <footer>Open source · <a href="https://github.com/y4sh-0day/top">Star it on GitHub</a> · Also playable in your terminal</footer>
+  <footer>Open source · <a href="https://github.com/y4sh-0day/Top">Star it on GitHub</a> · Also playable in your terminal</footer>
 </div>
 
 <script>
@@ -275,7 +275,7 @@ $("start").onclick = start;
 $("again").onclick = start;
 $("toMenu").onclick = () => { show("menu"); showBest(); };
 $("share").onclick = () => {
-  const text = `I scored ${s.score} points (${s.wpm} WPM) on CmdRush, ${PACK_LABELS[cfg.pack]} pack! https://github.com/y4sh-0day/top`;
+  const text = `I scored ${s.score} points (${s.wpm} WPM) on CmdRush, ${PACK_LABELS[cfg.pack]} pack! https://github.com/y4sh-0day/Top`;
   navigator.clipboard?.writeText(text).then(() => $("share").textContent = "Copied!", () => {});
 };
 $("game").addEventListener("click", () => $("input").focus());
