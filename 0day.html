@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0DAY Bug Bounty</title>
+<meta name="description" content="0DAY: a bug bounty hacking game in your browser. Hack 10 fake websites, write reports, earn fake bounties. 100% legal, 100% simulated.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070a; --bg2: #0a0f14; --panel: rgba(10, 18, 24, .92); --border: #12352a;
+    --neon: #00ff9c; --cyan: #00e5ff; --pink: #ff2bd6; --red: #ff3355; --amber: #ffb000;
+    --text: #c8ffe6; --muted: #5f8f7d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font-family: "Share Tech Mono", ui-monospace, Menlo, Consolas, monospace; min-height: 100vh; overflow-x: hidden; }
+  #rain { position: fixed; inset: 0; z-index: 0; opacity: .16; pointer-events: none; }
+  body::after { /* CRT scanlines */
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 16px; }
+  a { color: var(--cyan); }
+  button {
+    font: inherit; color: var(--neon); background: transparent; border: 1px solid var(--neon);
+    padding: 8px 14px; border-radius: 4px; cursor: pointer; letter-spacing: .5px;
+    transition: background .15s, box-shadow .15s;
+  }
+  button:hover:not(:disabled) { background: rgba(0,255,156,.12); box-shadow: 0 0 12px rgba(0,255,156,.4); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.solid { background: var(--neon); color: #001a10; font-weight: bold; }
+  button.pink { color: var(--pink); border-color: var(--pink); }
+  button.small { padding: 4px 9px; font-size: 13px; }
+
+  /* header */
+  header.top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .logo { font-family: Orbitron, sans-serif; font-weight: 900; font-size: 34px; color: var(--neon); letter-spacing: 3px;
+    text-shadow: 0 0 10px var(--neon), 2px 0 var(--pink), -2px 0 var(--cyan); position: relative; cursor: pointer; }
+  .logo:hover { animation: glitch .3s steps(2) 3; }
+  @keyframes glitch { 0% { transform: translate(2px,-1px); } 50% { transform: translate(-2px,1px); text-shadow: -3px 0 var(--pink), 3px 0 var(--cyan); } 100% { transform: none; } }
+  .tagline { color: var(--muted); font-size: 13px; }
+  .hud { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: var(--panel); padding: 6px 12px; border-radius: 4px; font-size: 14px; }
+  .chip b { color: var(--neon); }
+  #money { color: var(--amber); text-shadow: 0 0 8px rgba(255,176,0,.6); }
+  nav.games { display: flex; gap: 14px; font-size: 13px; width: 100%; }
+  nav.games a { color: var(--muted); text-decoration: none; }
+  nav.games a:hover { color: var(--cyan); }
+
+  /* targets */
+  .section-title { font-family: Orbitron, sans-serif; color: var(--cyan); letter-spacing: 2px; font-size: 18px; margin: 4px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; cursor: pointer;
+    position: relative; overflow: hidden; transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .card:hover:not(.locked) { transform: translateY(-3px); border-color: var(--neon); box-shadow: 0 0 18px rgba(0,255,156,.25); }
+  .card .num { color: var(--muted); font-size: 12px; }
+  .card h3 { margin: 6px 0 2px; color: var(--neon); font-size: 18px; }
+  .card .co { color: var(--cyan); font-size: 13px; }
+  .card .meta { display: flex; justify-content: space-between; margin-top: 14px; font-size: 14px; }
+  .card .bounty { color: var(--amber); }
+  .card.locked { cursor: not-allowed; opacity: .45; filter: grayscale(.7); }
+  .card.pwned { border-color: rgba(0,255,156,.5); }
+  .card .stamp { position: absolute; right: -28px; top: 14px; transform: rotate(35deg); background: var(--neon); color: #001a10;
+    font-family: Orbitron, sans-serif; font-size: 11px; padding: 3px 34px; font-weight: 900; }
+  .legal { margin-top: 18px; color: var(--muted); font-size: 13px; border-left: 3px solid var(--amber); padding-left: 10px; }
+
+  /* mission */
+  .mission { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px; }
+  .brief h2 { margin: 0; color: var(--neon); font-size: 20px; }
+  .brief .co { color: var(--cyan); }
+  .brief p { line-height: 1.5; }
+  .scope { font-size: 13px; color: var(--muted); border: 1px dashed var(--border); padding: 6px 8px; border-radius: 4px; }
+  .scope b { color: var(--neon); }
+  .hints { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .hint { border-left: 3px solid var(--amber); padding: 6px 10px; background: rgba(255,176,0,.06); font-size: 14px; color: #ffe0a0; }
+
+  /* fake browser */
+  .browser { border: 1px solid #2a3a34; border-radius: 8px; overflow: hidden; background: #fff; display: flex; flex-direction: column; min-height: 460px; }
+  .chrome { background: #1b2420; display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+  .dots { display: flex; gap: 6px; } .dots i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .chrome button { border: 0; color: #9fb; padding: 2px 8px; font-size: 16px; }
+  .urlbar { flex: 1; display: flex; align-items: center; background: #0b110e; border: 1px solid #2a3a34; border-radius: 16px; padding: 4px 12px; min-width: 0; }
+  .urlbar span { color: var(--neon); margin-right: 6px; font-size: 13px; }
+  .urlbar input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 14px; }
+  #page { flex: 1; overflow: auto; position: relative; }
+
+  /* fake target websites (look like normal sites) */
+  .site { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1f2328; background: #fff; min-height: 100%; font-size: 15px; }
+  .s-head { background: var(--brand); color: #fff; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .s-head b { font-size: 19px; }
+  .s-head span { font-size: 14px; opacity: .9; }
+  .s-main { padding: 22px 18px; max-width: 640px; }
+  .s-card { border: 1px solid #e1e4e8; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #fafbfc; }
+  .site h2 { margin: 0 0 10px; font-size: 22px; }
+  .site label { display: block; font-size: 13px; color: #57606a; margin: 10px 0 4px; }
+  .site input, .site textarea { width: 100%; padding: 9px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; color: #1f2328; background: #fff; }
+  .site button { background: var(--brand); color: #fff; border: 0; padding: 9px 16px; border-radius: 6px; margin-top: 12px; font-family: inherit; font-weight: 600; letter-spacing: 0; }
+  .site button:hover { background: var(--brand); box-shadow: none; filter: brightness(1.1); }
+  .site pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow: auto; font-size: 13px; }
+  .site a[data-go] { color: var(--brand); text-decoration: underline; cursor: pointer; }
+  .site .muted { color: #6e7781; font-size: 13px; }
+  .site .warn { background: #fff8c5; border: 1px solid #d4a72c; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  .site .err { background: #ffebe9; border: 1px solid #ff8182; padding: 8px 10px; border-radius: 6px; font-size: 13px; color: #82071e; word-break: break-all; }
+  .site .ok { background: #dafbe1; border: 1px solid #4ac26b; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  .site code { background: #eff1f3; padding: 1px 5px; border-radius: 4px; font-size: 13px; word-break: break-all; }
+  .s-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .s-item { border: 1px solid #e1e4e8; border-radius: 8px; padding: 12px; text-align: center; }
+  .s-item .emoji { font-size: 40px; }
+  .comment { border-bottom: 1px solid #eee; padding: 8px 0; word-break: break-word; }
+  .oos { font-family: "Share Tech Mono", monospace; background: #120508; color: var(--red); min-height: 100%; padding: 30px; text-align: center; }
+  .oos h2 { font-family: Orbitron, sans-serif; }
+
+  /* tools */
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tabs button { border-color: var(--border); color: var(--muted); padding: 6px 10px; font-size: 13px; }
+  .tabs button.on { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 10px rgba(0,229,255,.25); }
+  .tabs button.ping { animation: ping .6s 4; }
+  @keyframes ping { 50% { background: rgba(255,43,214,.35); border-color: var(--pink); color: #fff; } }
+  .tool textarea, .tool input, .tool pre {
+    width: 100%; background: #020403; color: var(--neon); border: 1px solid var(--border); border-radius: 4px;
+    font: inherit; font-size: 13px; padding: 10px;
+  }
+  .tool pre { max-height: 380px; overflow: auto; white-space: pre-wrap; word-break: break-all; margin: 0; }
+  .tool textarea { min-height: 170px; resize: vertical; }
+  .tool .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+  .tool .status { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+  .tool .status.live { color: var(--pink); }
+  .cookie-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .cookie-row b { color: var(--cyan); }
+  .hl-comment { color: var(--amber); }
+
+  /* overlays */
+  .overlay { position: fixed; inset: 0; z-index: 60; background: rgba(2,4,3,.92); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: var(--bg2); border: 1px solid var(--neon); box-shadow: 0 0 40px rgba(0,255,156,.25); border-radius: 8px; padding: 24px; max-width: 560px; width: 100%; max-height: 92vh; overflow: auto; }
+  .modal h2 { font-family: Orbitron, sans-serif; color: var(--neon); margin-top: 0; letter-spacing: 1px; }
+  .granted { font-family: Orbitron, sans-serif; font-size: clamp(30px, 8vw, 72px); font-weight: 900; color: var(--neon); text-align: center;
+    text-shadow: 0 0 20px var(--neon), 4px 0 var(--pink), -4px 0 var(--cyan); animation: glitch .25s steps(2) 6; }
+  .flag { text-align: center; color: var(--amber); font-size: 18px; margin-top: 14px; word-break: break-all; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+  .opts button { border-color: var(--border); color: var(--text); font-size: 14px; }
+  .opts button.on { border-color: var(--neon); color: var(--neon); background: rgba(0,255,156,.1); }
+  .big-money { font-family: Orbitron, sans-serif; font-size: 48px; color: var(--amber); text-align: center; text-shadow: 0 0 18px rgba(255,176,0,.7); margin: 6px 0; }
+  .triager { border-left: 3px solid var(--cyan); padding: 8px 12px; background: rgba(0,229,255,.06); margin: 12px 0; }
+  .fix { border-left: 3px solid var(--neon); padding: 8px 12px; background: rgba(0,255,156,.05); line-height: 1.5; }
+  .rankup { text-align: center; color: var(--pink); font-family: Orbitron, sans-serif; margin: 10px 0; animation: glitch .3s steps(2) 5; }
+
+  #boot { position: fixed; inset: 0; z-index: 70; background: #000; padding: 30px; color: var(--neon); font-size: 15px; line-height: 1.6; cursor: pointer; }
+  #boot .warn { color: var(--amber); }
+  #boot .skip { position: absolute; bottom: 20px; right: 24px; color: var(--muted); font-size: 13px; }
+
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 80; background: var(--bg2); border: 1px solid var(--neon);
+    padding: 10px 16px; border-radius: 4px; max-width: 90vw; display: none; box-shadow: 0 0 20px rgba(0,255,156,.3); }
+  #toast.bad { border-color: var(--red); color: #ffb3c0; box-shadow: 0 0 20px rgba(255,51,85,.3); }
+  .dollar { position: fixed; top: -40px; z-index: 65; color: var(--amber); font-size: 26px; pointer-events: none; animation: fall linear forwards; text-shadow: 0 0 8px rgba(255,176,0,.8); }
+  @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .hidden { display: none !important; }
+
+  @media (max-width: 900px) {
+    .mission { grid-template-columns: 1fr; }
+    #side { display: contents !important; }
+    #brief { order: -1; }
+    .browser { min-height: 380px; }
+    .logo { font-size: 28px; }
+    .hud { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { #rain { display: none; } * { animation: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div id="boot"><div id="bootText"></div><div class="skip">click or press any key to skip</div></div>
+
+<div class="wrap">
+  <header class="top">
+    <nav class="games"><a href="./">CmdRush</a><a href="typing.html">TypeFast</a><a href="0day.html" style="color:var(--neon)">0DAY</a></nav>
+    <div>
+      <div class="logo" id="logo" title="Back to targets">0DAY</div>
+      <div class="tagline">// the bug bounty game</div>
+    </div>
+    <div class="hud">
+      <div class="chip">Rank: <b id="rank">Script Kiddie</b></div>
+      <div class="chip">Bounty: <b id="money">$0</b></div>
+      <div class="chip">Pwned: <b id="pwned">0/10</b></div>
+      <button class="small" id="soundBtn" title="Sound on/off">🔊</button>
+      <button class="small" id="shareBtn">Share</button>
+    </div>
+  </header>
+
+  <!-- Targets screen -->
+  <section id="targets">
+    <div class="section-title">&gt; SELECT TARGET_</div>
+    <p class="sub">Each target is a fake company with one hidden vulnerability. Find it, exploit it, write the report and get paid.</p>
+    <div class="grid" id="grid"></div>
+    <p class="legal">⚠ Everything here is a simulation running inside your browser. No real website is touched. In real life, only test systems you have <b>written permission</b> to test, like official bug bounty programs.</p>
+  </section>
+
+  <!-- Mission screen -->
+  <section id="mission" class="hidden">
+    <div class="mission">
+      <div>
+        <div class="browser" id="browser">
+          <div class="chrome">
+            <div class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+            <button id="backBtn" title="Back">←</button>
+            <button id="reloadBtn" title="Reload">⟳</button>
+            <form class="urlbar" id="urlForm"><span>🔒</span><input id="url" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Address bar"></form>
+          </div>
+          <div id="page"></div>
+        </div>
+        <p class="tagline" style="margin-top:8px">Tip: you can edit the address bar and press Enter, just like a real browser.</p>
+      </div>
+      <div id="side" style="display:flex;flex-direction:column;gap:14px">
+        <div class="panel brief" id="brief"></div>
+        <div class="panel tool">
+          <div class="tabs" id="tabs">
+            <button data-tab="source" class="on">&lt;/&gt; Source</button>
+            <button data-tab="proxy">⇄ Proxy</button>
+            <button data-tab="cookies">🍪 Cookies</button>
+            <button data-tab="decoder">🔓 Decoder</button>
+          </div>
+          <div data-pane="source"><pre id="src"></pre></div>
+          <div data-pane="proxy" class="hidden">
+            <p class="status" id="proxyStatus">Intercept is ON. Waiting for the website to send a request...</p>
+            <textarea id="proxyReq" spellcheck="false" placeholder="(no request yet)"></textarea>
+            <div class="row"><button id="fwdBtn" class="solid" disabled>Forward ▶</button><button id="dropBtn" class="pink" disabled>Drop</button></div>
+          </div>
+          <div data-pane="cookies" class="hidden"><div id="cookieList"></div></div>
+          <div data-pane="decoder" class="hidden">
+            <textarea id="decIn" spellcheck="false" placeholder="Paste text to encode or decode..." style="min-height:90px"></textarea>
+            <div class="row">
+              <button class="small" data-dec="b64d">Base64 decode</button><button class="small" data-dec="b64e">Base64 encode</button>
+              <button class="small" data-dec="urld">URL decode</button><button class="small" data-dec="urle">URL encode</button>
+              <button class="small" data-dec="hexd">Hex decode</button>
+            </div>
+            <pre id="decOut" style="margin-top:8px;min-height:40px"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="overlay" class="overlay hidden"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const pick = a => a[Math.random() * a.length | 0];
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const b64e = s => btoa(unescape(encodeURIComponent(s)));
+const b64d = s => decodeURIComponent(escape(atob(s.trim())));
+
+/* ================= Save data ================= */
+const SAVE_KEY = "0day:save:v1";
+let save = { money: 0, solved: {}, sound: true };
+try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
+const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
+
+const RANKS = [[0, "Script Kiddie"], [300, "Bug Spotter"], [1500, "Bug Hunter"], [4000, "Hacker"], [8000, "Elite Hacker"], [13000, "0DAY Legend"]];
+const rankOf = m => RANKS.filter(r => m >= r[0]).pop()[1];
+
+/* ================= Sound ================= */
+let actx;
+function tone(freq, dur = .08, type = "square", vol = .05, delay = 0) {
+  if (!save.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq; g.gain.value = vol;
+    o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime + delay;
+    o.start(t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.stop(t + dur + .02);
+  } catch {}
+}
+const sfx = {
+  click: () => tone(880, .04, "square", .03),
+  bad: () => { tone(160, .18, "sawtooth", .06); tone(110, .25, "sawtooth", .06, .12); },
+  win: () => [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, .14, "square", .05, i * .09)),
+  cash: () => [1200, 1600, 2000].forEach((f, i) => tone(f, .07, "triangle", .06, i * .06)),
+  type: () => tone(1400 + Math.random() * 400, .015, "square", .015)
+};
+
+/* ================= Vulnerability classes ================= */
+const VULNS = ["Information Disclosure", "Forced Browsing", "IDOR", "Cross-Site Scripting (XSS)", "SQL Injection",
+  "Parameter Tampering", "Open Redirect", "Broken Authentication", "Path Traversal", "SSRF", "CSRF", "Clickjacking", "Rate Limit Bypass"];
+const SEVS = ["Low", "Medium", "High", "Critical"];
+
+/* ================= Site template ================= */
+const site = (brand, color, nav, body) =>
+`<div class="site" style="--brand:${color}">
+<header class="s-head"><b>${brand}</b><span>${nav}</span></header>
+<main class="s-main">
+${body}
+</main>
+</div>`;
+
+/* ================= LEVELS ================= */
+const LEVELS = [
+{
+  id: "peek", name: "Peek-a-Boo", company: "PizzaPortal 🍕", domain: "pizzaportal.fake", bounty: 100, diff: 1,
+  vuln: "Information Disclosure", sev: "High", start: "/admin",
+  brief: "PizzaPortal just launched a shiny new admin login. Rumour says the developers were in a hurry and ate too much pizza. <b>Get into the admin panel.</b>",
+  hints: ["Websites contain more than what you see on screen.", "Open the <b>&lt;/&gt; Source</b> tab and read every line, including comments.", "There's a password in an HTML comment. Type it into the login form."],
+  fix: "Never put secrets in client-side code. HTML comments, JavaScript files and source maps can be read by anyone. Strip comments in the build step, and <b>rotate</b> any password that leaked.",
+  init: () => ({}),
+  page(path) {
+    if (path === "/" || path === "/admin") return { title: "Admin login", html: site("PizzaPortal", "#d9480f", "Admin area",
+`<!-- TODO: remove before launch!! dev login password: m0zzarella_2024 -->
+<div class="s-card">
+<h2>🍕 Admin Login</h2>
+<p class="muted">Staff only. Unauthorized pizza lovers will be reported.</p>
+<form id="f">
+<label>Password</label>
+<input id="pw" type="password" placeholder="••••••••">
+<button>Log in</button>
+</form>
+</div>`) };
+  },
+  bind(el, S, G) {
+    el.querySelector("#f")?.addEventListener("submit", e => {
+      e.preventDefault();
+      if (el.querySelector("#pw").value.trim() === "m0zzarella_2024") G.win("0DAY{v13w_s0urc3_1s_a_sup3rp0w3r}");
+      else G.toast("🍕 Wrong password. The pizza is judging you.", true);
+    });
+  }
+},
+{
+  id: "robots", name: "Robots Don't Lie", company: "GymBro 💪", domain: "gymbro.fake", bounty: 200, diff: 1,
+  vuln: "Forced Browsing", sev: "High", start: "/",
+  brief: "GymBro says their admin panel is 'hidden so well, nobody will ever find it'. Hackers love a challenge. <b>Find the secret admin panel.</b>",
+  hints: ["Websites tell search engine robots which pages they should NOT visit.", "There's a famous file at the root of most websites for robots: <code>/robots.txt</code>.", "Open <code>https://gymbro.fake/robots.txt</code>, then visit the path it disallows."],
+  fix: "Hiding a page is not security. <code>robots.txt</code> is public, and anyone can read it. Protect admin pages with real authentication and authorization checks on the server.",
+  init: () => ({}),
+  page(path, q, S, G) {
+    if (path === "/") return { html: site("GymBro", "#1971c2", "Home · Plans · Login",
+`<div class="s-card"><h2>💪 Get swole with GymBro</h2>
+<p>New year, new gains. Join 50,000 bros lifting heavy things and putting them back down.</p>
+<p class="muted">Admin panel? Hidden. Super hidden. Nobody will ever find it. Trust us, bro.</p></div>`) };
+    if (path === "/robots.txt") return { raw: true, html:
+`User-agent: *
+Disallow: /s3cr3t-admin-panel
+# bro don't index the admin panel lol`, };
+    if (path === "/s3cr3t-admin-panel") return { html: site("GymBro ADMIN", "#c92a2a", "⚠ internal",
+`<div class="s-card"><h2>🛠 Admin Panel</h2>
+<p>Members: 50,212 · Revenue: $1.2M</p>
+<button>Delete all users</button> <button>Export credit cards</button>
+<p class="muted">No login required because nobody knows this URL. – Chad (CTO)</p></div>`),
+      onShow: () => G.win("0DAY{r0b0ts_txt_1s_n0t_s3cur1ty}") };
+  }
+},
+{
+  id: "idor", name: "Not Your Order", company: "ShopZilla 🦖", domain: "shopzilla.fake", bounty: 300, diff: 2,
+  vuln: "IDOR", sev: "High", start: "/orders?id=1337",
+  brief: "You bought a rubber duck from ShopZilla. Your order page has a number in the URL... <b>Can you see someone else's order?</b>",
+  hints: ["Look closely at the address bar. What does <code>id=1337</code> mean?", "Order numbers are usually sequential. Other customers' orders have nearby numbers.", "Change the URL to <code>/orders?id=1001</code> and press Enter."],
+  fix: "This is an <b>Insecure Direct Object Reference</b>. The server must check that the logged-in user <b>owns</b> the object they ask for, every time. Random IDs (UUIDs) help, but the ownership check is the real fix.",
+  init: () => ({}),
+  page(path, q, S, G) {
+    if (path !== "/orders" && path !== "/") return;
+    const id = parseInt(q.get("id") || "1337", 10);
+    const head = (b) => site("ShopZilla", "#2b8a3e", "Logged in as <b>you</b> · My orders", b);
+    if (id === 1337) return { html: head(`<div class="s-card"><h2>Order #1337</h2><p>Customer: <b>You</b></p><p>🦆 Rubber duck × 1, <b>$4.99</b></p><p class="muted">Ships to: 42 Hacker Street</p></div>`) };
+    if (id === 1001) return { html: head(`<div class="s-card"><h2>Order #1001</h2><p>Customer: <b>Elon Tusk (CEO)</b></p><p>🚽 Solid diamond toilet × 1, <b>$2,400,000</b></p><p class="muted">Ships to: Secret Volcano Base, Mars Road 1</p><p class="muted">Card: •••• 4242</p></div>`), onShow: () => G.win("0DAY{1d0r_s33_3v3ryth1ng}") };
+    if (id >= 1000 && id <= 2000) {
+      const names = ["Sarah K.", "Mike R.", "Priya S.", "Tom B.", "Aisha M.", "Leo F.", "Yuki T.", "Carlos D."];
+      const items = ["🎧 Headphones", "🧦 Socks (pack of 9)", "📚 Cookbook", "🪴 Cactus", "🎮 Game controller", "☕ Mega mug"];
+      return { html: head(`<div class="s-card"><h2>Order #${id}</h2><p>Customer: <b>${names[id % names.length]}</b></p><p>${items[id % items.length]} × 1</p><p class="muted">Home address: ${100 + id % 800} ${pick(["Oak", "Elm", "Main", "Lake"])} Street</p></div>`), onShow: () => G.win("0DAY{1d0r_s33_3v3ryth1ng}") };
+    }
+    return { html: head(`<div class="err">Order #${esc(q.get("id"))} not found.</div>`) };
+  }
+},
+{
+  id: "xss", name: "Comment Chaos", company: "CatGram 🐱", domain: "catgram.fake", bounty: 500, diff: 2,
+  vuln: "Cross-Site Scripting (XSS)", sev: "High", start: "/post/42",
+  brief: "CatGram lets anyone comment on cat pictures. The developer says comments are 'just text'. <b>Make the page run your JavaScript</b> (pop an <code>alert</code>).",
+  hints: ["What if your comment contained HTML instead of normal text?", "Try a tag that runs JavaScript, like <code>&lt;script&gt;</code>.", "Post this comment: <code>&lt;img src=x onerror=alert(1)&gt;</code>"],
+  fix: "Always <b>encode output</b> before putting user input into HTML (<code>&lt;</code> becomes <code>&amp;lt;</code>). Use a framework that escapes by default, avoid <code>innerHTML</code>, and add a Content-Security-Policy header.",
+  init: () => ({ comments: [["whiskers_99", "Such a majestic floof 😻"], ["dog_person", "ok this cat is cute I admit it"]] }),
+  page(path, q, S) {
+    if (path !== "/post/42" && path !== "/") return;
+    return { html: site("CatGram", "#ae3ec9", "Feed · Explore · Profile",
+`<div class="s-card" style="text-align:center"><div style="font-size:90px">🐈</div><b>@sir_meowsalot</b> · 12,403 likes</div>
+<div class="s-card"><h2>Comments</h2>
+${S.comments.map(([u, c]) => `<div class="comment"><b>${esc(u)}</b> ${esc(c)}</div>`).join("")}
+<form id="cf"><label>Add a comment</label><textarea id="ct" rows="2" placeholder="Say something nice..."></textarea><button>Post</button></form>
+</div>`) };
+  },
+  bind(el, S, G) {
+    el.querySelector("#cf")?.addEventListener("submit", e => {
+      e.preventDefault();
+      const v = el.querySelector("#ct").value.trim(); if (!v) return;
+      if (/<\s*script|on\w+\s*=|javascript:|<\s*svg|<\s*iframe/i.test(v)) {
+        S.comments.push(["you", v]);
+        G.fakeAlert("catgram.fake says", "1", () => G.win("0DAY{x55_m30w_m30w_alert}"));
+      } else {
+        S.comments.push(["you", v]); G.reload();
+        G.toast(/<\w+/.test(v) ? "🐱 HTML went in... but nothing ran. Try a tag that runs JavaScript." : "Comment posted! The cat is unimpressed.", /<\w+/.test(v));
+      }
+    });
+  }
+},
+{
+  id: "sqli", name: "Bank of Memes", company: "Bank of Memes 🏦", domain: "bankofmemes.fake", bounty: 750, diff: 3,
+  vuln: "SQL Injection", sev: "Critical", start: "/login",
+  brief: "Bank of Memes stores everyone's meme savings. The login form has a weird debug box under it... <b>Log in without knowing any password.</b>",
+  hints: ["Watch the DEBUG box while you type. Your input goes straight into the SQL query!", "A single quote <code>'</code> closes the text in the query. What can you add after it?", "Username: <code>' OR 1=1--</code> (any password)"],
+  fix: "Never build SQL by gluing strings together. Use <b>parameterized queries / prepared statements</b> so input is always treated as data, never as code. Also turn off debug output in production!",
+  init: () => ({}),
+  page(path) {
+    if (path !== "/login" && path !== "/") return;
+    return { html: site("Bank of Memes", "#0b7285", "Personal · Business · 🐸 Stonks",
+`<div class="s-card"><h2>🏦 Online Banking</h2>
+<form id="lf">
+<label>Username</label><input id="lu" autocomplete="off" autocapitalize="off" spellcheck="false">
+<label>Password</label><input id="lp" type="password">
+<button>Sign in</button>
+</form></div>
+<div class="warn"><b>DEBUG MODE ON</b> (todo: turn off lol)<br>
+<code id="lq">SELECT * FROM users WHERE username = '' AND password = ''</code></div>
+<div id="lr" style="margin-top:10px"></div>`) };
+  },
+  bind(el, S, G) {
+    const u = el.querySelector("#lu"), p = el.querySelector("#lp"), q = el.querySelector("#lq");
+    if (!u) return;
+    const upd = () => q.textContent = `SELECT * FROM users WHERE username = '${u.value}' AND password = '${p.value}'`;
+    u.oninput = upd; p.oninput = upd;
+    el.querySelector("#lf").addEventListener("submit", e => {
+      e.preventDefault();
+      const all = u.value + " " + p.value;
+      const r = el.querySelector("#lr");
+      if (/'\s*(or|\|\|)\s+[^=]*=|'\s*or\s+(true|1)\b|'\s*(--|#|\/\*)/i.test(all)) {
+        r.innerHTML = `<div class="ok">✅ Welcome back, <b>admin</b>! Balance: <b>1,000,000 Doge</b></div>`;
+        G.win("0DAY{1_0r_1_3qu4ls_1_st0nks}");
+      } else if (all.includes("'")) {
+        r.innerHTML = `<div class="err">SQL syntax error near '${esc(all.slice(all.indexOf("'")))}' at line 1</div>`;
+        G.toast("💥 The database crashed. Interesting... your quote broke the query.", true);
+      } else {
+        r.innerHTML = `<div class="err">Invalid username or password.</div>`; G.toast("Login failed.", true);
+      }
+    });
+  }
+},
+{
+  id: "tamper", name: "Hoodie Heist", company: "DripStore 🧥", domain: "dripstore.fake", bounty: 1000, diff: 3,
+  vuln: "Parameter Tampering", sev: "High", start: "/",
+  brief: "You have <b>$5</b>. The legendary Golden Hoodie costs <b>$999</b>. The price is sent from your browser to the server... <b>Buy the Golden Hoodie.</b>",
+  hints: ["Click Buy and watch the <b>⇄ Proxy</b> tab. You can edit the request before it reaches the server.", "Look at the JSON body. Which value does the server trust from you?", "Change <code>\"price\":999</code> to <code>\"price\":1</code>, then press Forward."],
+  fix: "Never trust prices, roles or totals sent by the client. The server must look up the real price from its own database and calculate the total itself.",
+  init: () => ({}),
+  page(path, q, S, G) {
+    if (path !== "/") return;
+    return { html: site("DripStore", "#212529", "Balance: <b>$5.00</b> · 🛒",
+`<div class="s-items">
+<div class="s-item"><div class="emoji">🧢</div>Basic cap<br><b>$4</b><br><button data-buy="cap" data-price="4">Buy</button></div>
+<div class="s-item" style="border-color:#f2c94c;background:#fffbe6"><div class="emoji">🧥✨</div><b>Golden Hoodie</b><br><b>$999</b><br><button data-buy="golden-hoodie" data-price="999">Buy</button></div>
+<div class="s-item"><div class="emoji">🧦</div>Drip socks<br><b>$15</b><br><button data-buy="socks" data-price="15">Buy</button></div>
+</div>
+<p class="muted" style="margin-top:14px">All payments are final. No refunds. No questions. No drip without effort.</p>`) };
+  },
+  bind(el, S, G) {
+    el.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => {
+      const item = b.dataset.buy;
+      const req = `POST /api/checkout HTTP/1.1\nHost: dripstore.fake\nContent-Type: application/json\nCookie: session=a1b2c3\n\n{"item":"${item}","price":${b.dataset.price},"qty":1}`;
+      G.intercept(req, text => {
+        let body;
+        try { body = JSON.parse(text.split(/\n\s*\n/).slice(1).join("\n")); } catch { G.toast("400 Bad Request: the server couldn't read your JSON.", true); return; }
+        const total = Number(body.price) * Number(body.qty);
+        if (!(Number(body.qty) >= 1)) { G.toast("400: quantity must be at least 1. Nice try 😏 What else can you change?", true); return; }
+        if (isNaN(total) || total > 5) { G.toast(`💸 Payment declined: total $${isNaN(total) ? "???" : total} but you only have $5.`, true); return; }
+        if (body.item === "golden-hoodie") G.win("0DAY{n3v3r_trust_th3_cl13nt_pr1c3}");
+        else G.toast(`✅ You bought ${esc(body.item)}. Cool, but the Golden Hoodie is the target!`);
+      });
+    });
+  }
+},
+{
+  id: "redirect", name: "Redirect Rodeo", company: "LoginHub 🔑", domain: "loginhub.fake", bounty: 1000, diff: 2,
+  vuln: "Open Redirect", sev: "Medium", start: "/login?next=/dashboard",
+  brief: "LoginHub sends you somewhere after login, based on the URL. Phishers would love to abuse this. <b>Make LoginHub redirect you to <code>evil.example</code>.</b>",
+  hints: ["Look at the <code>next=</code> part of the URL. That's where you go after login.", "What if <code>next</code> was a full URL to a different website?", "Go to <code>https://loginhub.fake/login?next=https://evil.example</code> and click Log in."],
+  fix: "Only allow redirects to your own site: accept relative paths (that start with a single <code>/</code>) or check the target against an allowlist of domains. Attackers use open redirects to make phishing links look trustworthy.",
+  init: () => ({}),
+  page(path, q, S, G) {
+    if (path === "/login" || path === "/") return { html: site("LoginHub", "#5f3dc4", "Secure login™",
+`<div class="s-card"><h2>🔑 Log in to LoginHub</h2>
+<label>Email</label><input value="you@example.com">
+<label>Password</label><input type="password" value="hunter2">
+<button id="lg">Log in</button>
+<p class="muted">After login you'll be sent to: <code>${esc(q.get("next") || "/dashboard")}</code></p></div>`) };
+    if (path === "/dashboard") return { html: site("LoginHub", "#5f3dc4", "Dashboard", `<div class="ok">✅ Logged in. Welcome to your boring dashboard.</div><p class="muted">Hmm, what controls where you landed?</p>`) };
+  },
+  bind(el, S, G) {
+    el.querySelector("#lg")?.addEventListener("click", () => {
+      const next = new URL(G.currentUrl).searchParams.get("next") || "/dashboard";
+      if (/^(https?:)?\/\//i.test(next.trim()) || /^\/\\/.test(next)) {
+        let host = "?"; try { host = new URL(next.replace(/^\/\\/, "//"), "https://loginhub.fake").host; } catch {}
+        if (host && host !== "loginhub.fake") {
+          G.showExternal(host);
+          G.win("0DAY{0p3n_r3d1r3ct_ph1sh1ng_p4r4d1s3}");
+          return;
+        }
+      }
+      G.go("https://loginhub.fake" + (next.startsWith("/") ? next : "/" + next));
+    });
+  }
+},
+{
+  id: "cookie", name: "Cookie Monster", company: "StreamFlix 🎬", domain: "streamflix.fake", bounty: 2500, diff: 4,
+  vuln: "Broken Authentication", sev: "Critical", start: "/",
+  brief: "StreamFlix has an admin area for uploading movies. Your account is a normal user. Your session cookie looks... weird. <b>Become admin.</b>",
+  hints: ["Open the <b>🍪 Cookies</b> tab. Does the session value look random, or encoded?", "Copy the cookie into the <b>🔓 Decoder</b> and Base64-decode it.", "Change <code>\"role\":\"user\"</code> to <code>\"role\":\"admin\"</code>, Base64-encode it, save it as the cookie, then open <code>/admin</code>."],
+  fix: "Never trust a session cookie the user can edit. Sign it (HMAC, or a properly verified JWT) or, better, store only a random session ID and keep the role on the server.",
+  init: () => ({ cookies: { session: b64e('{"user":"guest42","role":"user"}'), theme: "dark" } }),
+  page(path, q, S, G) {
+    const head = b => site("StreamFlix", "#e03131", "Movies · Series · <a data-go=\"/admin\" style=\"color:#fff\">Admin</a>", b);
+    if (path === "/") return { html: head(`<div class="s-card"><h2>🎬 Trending now</h2><p>🦈 Sharknado 9 · 🤖 Robo Grandma · 🧀 The Cheese Heist</p><p class="muted">Admins can upload new movies in the <a data-go="/admin">admin area</a>.</p></div>`) };
+    if (path === "/admin") {
+      let sess = null; try { sess = JSON.parse(b64d(S.cookies.session || "")); } catch {}
+      if (!sess) return { html: head(`<div class="err">500 Internal Server Error: could not decode session cookie.</div><p class="muted">The server tried to Base64-decode and parse your cookie as JSON... and failed.</p>`) };
+      if (sess.role === "admin") return { html: head(`<div class="ok">👑 Welcome, ADMIN ${esc(sess.user || "")}!</div><div class="s-card"><h2>Upload movie</h2><button>Upload "My Cat: The Movie"</button></div>`), onShow: () => G.win("0DAY{c00k13_m0nst3r_1s_n0w_4dm1n}") };
+      return { html: head(`<div class="err">⛔ Access denied. You are <b>${esc(sess.user)}</b> with role <b>${esc(sess.role)}</b>. Admins only.</div>`) };
+    }
+  }
+},
+{
+  id: "traversal", name: "Path to Glory", company: "DocuVault 📁", domain: "docuvault.fake", bounty: 3000, diff: 4,
+  vuln: "Path Traversal", sev: "Critical", start: "/view?file=invoice.txt",
+  brief: "DocuVault shows your files using a <code>file=</code> parameter. The files live in <code>/var/www/docs/</code> on the server. <b>Read the server's <code>/etc/passwd</code> file.</b>",
+  hints: ["The server adds your <code>file</code> value to the end of <code>/var/www/docs/</code>.", "<code>../</code> means \"go up one folder\". How many times do you need to go up to reach <code>/</code>?", "Try <code>/view?file=../../../etc/passwd</code>"],
+  fix: "Never put user input directly into file paths. Map IDs to files on the server, or resolve the full path and check it still starts with the allowed folder. Reject <code>../</code> sequences, including encoded ones.",
+  init: () => ({}),
+  page(path, q, S, G) {
+    if (path !== "/view" && path !== "/") return;
+    const f = q.get("file") || "invoice.txt";
+    const files = { "invoice.txt": "INVOICE #77\nCustomer: You\nItem: 1x Cloud storage (2 GB)\nTotal: $0.99", "notes.txt": "Remember: buy milk. And fix the file viewer security bug (lol later)." };
+    const head = b => site("DocuVault", "#495057", "My files · <a data-go=\"/view?file=invoice.txt\" style=\"color:#fff\">invoice.txt</a> · <a data-go=\"/view?file=notes.txt\" style=\"color:#fff\">notes.txt</a>", b);
+    if (/(\.\.[\/\\]){1,}/.test(f) && /etc[\/\\]passwd$/.test(f)) return { html: head(`<p class="muted">Viewing: /var/www/docs/${esc(f)}</p><pre>root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+docuvault:x:1000:1000:DocuVault,,,:/home/docuvault:/bin/bash
+flag:x:1337:1337:0DAY{d0t_d0t_sl4sh_t0_gl0ry}:/nonexistent:/bin/false</pre>`), onShow: () => G.win("0DAY{d0t_d0t_sl4sh_t0_gl0ry}") };
+    if (files[f]) return { html: head(`<p class="muted">Viewing: /var/www/docs/${esc(f)}</p><pre>${esc(files[f])}</pre>`) };
+    return { html: head(`<div class="err">File not found: /var/www/docs/${esc(f)}</div>`) };
+  }
+},
+{
+  id: "ssrf", name: "Inside Job", company: "ThumbGen ☁️", domain: "thumbgen.fake", bounty: 5000, diff: 5,
+  vuln: "SSRF", sev: "Critical", start: "/",
+  brief: "ThumbGen fetches any image URL you give it and makes a thumbnail. The request comes <b>from their server</b>, inside their cloud... <b>Make the server fetch something internal and leak its cloud secrets.</b>",
+  hints: ["The server makes the request, not you. So it can reach places you can't, like itself.", "Try <code>http://localhost/</code> or <code>http://127.0.0.1/</code>.", "Cloud servers have a secret metadata address: <code>http://169.254.169.254/latest/meta-data/</code>"],
+  fix: "Validate URLs on the server against an allowlist of hosts. Block internal IP ranges (127.0.0.0/8, 10.0.0.0/8, 169.254.0.0/16 and others) <b>after</b> DNS resolution, and use IMDSv2 on AWS. This is how real companies have lost millions of records.",
+  init: () => ({ result: "" }),
+  page(path, q, S) {
+    if (path !== "/") return;
+    return { html: site("ThumbGen", "#1098ad", "☁ Cloud thumbnails as a service",
+`<div class="s-card"><h2>☁️ Make a thumbnail</h2>
+<form id="tf"><label>Image URL</label><input id="tu" placeholder="https://example.com/cat.jpg" autocomplete="off" autocapitalize="off" spellcheck="false"><button>Fetch &amp; resize</button></form></div>
+<div id="tr">${S.result}</div>`) };
+  },
+  bind(el, S, G) {
+    el.querySelector("#tf")?.addEventListener("submit", e => {
+      e.preventDefault();
+      const raw = el.querySelector("#tu").value.trim();
+      let u; try { u = new URL(raw); } catch { S.result = `<div class="err">Invalid URL.</div>`; G.reload(); return; }
+      const h = u.hostname.replace(/^\[|\]$/g, "");
+      if (["169.254.169.254", "metadata.google.internal"].includes(h)) {
+        S.result = `<div class="err">Not an image! Raw response from ${esc(u.href)}:</div><pre>{
+  "Code": "Success",
+  "AccessKeyId": "AKIA0DAYFAKEKEY1337",
+  "SecretAccessKey": "wJalr/K7MDENG/0DAY{ssrf_cl0ud_k3ys_l00t}",
+  "Token": "IQoJb3JpZ2luX2VjEFAKE..."
+}</pre>`;
+        G.reload(); G.win("0DAY{ssrf_cl0ud_k3ys_l00t}");
+      } else if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(h) || h.endsWith(".internal")) {
+        S.result = `<div class="err">Not an image! Raw response:</div><pre>&lt;h1&gt;Internal Admin Dashboard&lt;/h1&gt;
+Server: thumbgen-prod-7 (AWS EC2)
+Tip for devs: cloud credentials are at http://169.254.169.254/latest/meta-data/</pre>`;
+        G.reload(); G.toast("😮 The server fetched its own internal page! Now go deeper...");
+      } else if (/^https?:$/.test(u.protocol)) {
+        S.result = `<div class="ok">✅ Thumbnail created from <code>${esc(u.host)}</code></div><div style="font-size:60px;text-align:center">🖼️</div>`;
+        G.reload(); G.toast("Normal image fetched. What could the server reach that you can't?");
+      } else { S.result = `<div class="err">Only http and https are supported.</div>`; G.reload(); }
+    });
+  }
+}
+];
+
+/* ================= Game engine ================= */
+const G = {
+  level: null, S: null, history: [], currentUrl: "", hints: 0, won: false, pending: null,
+  toast(msg, bad) {
+    const t = $("toast"); t.innerHTML = msg; t.className = bad ? "bad" : ""; t.style.display = "block";
+    (bad ? sfx.bad : sfx.click)();
+    if (bad) { $("browser").classList.remove("shake"); void $("browser").offsetWidth; $("browser").classList.add("shake"); }
+    clearTimeout(G._tt); G._tt = setTimeout(() => t.style.display = "none", 3800);
+  },
+  go(url, push = true) {
+    url = url.trim();
+    if (!/^[a-z]+:\/\//i.test(url)) url = "https://" + (url.startsWith("/") ? G.level.domain + url : url);
+    let u; try { u = new URL(url); } catch { G.toast("That's not a valid URL.", true); return; }
+    if (push && G.currentUrl) G.history.push(G.currentUrl);
+    G.currentUrl = u.href;
+    $("url").value = u.href;
+    if (u.host !== G.level.domain) return G.render({ oos: true, host: u.host });
+    const pg = G.level.page(u.pathname.replace(/\/+$/, "") || "/", u.searchParams, G.S, G);
+    G.render(pg || { notFound: true, path: u.pathname });
+  },
+  reload() { G.go(G.currentUrl, false); },
+  render(pg) {
+    const el = $("page");
+    let html;
+    if (pg.oos) html = `<div class="oos"><h2>🚫 OUT OF SCOPE</h2><p><b>${esc(pg.host)}</b> is not part of this bug bounty program.</p><p>Only test <b>${G.level.domain}</b>. In real bug bounties, hacking out-of-scope targets can get you banned or in legal trouble!</p></div>`;
+    else if (pg.notFound) html = `<div class="site" style="padding:40px;text-align:center"><h2>404</h2><p class="muted">Not Found: ${esc(pg.path)}</p></div>`;
+    else if (pg.raw) html = `<pre style="margin:0;padding:16px;font-family:monospace;white-space:pre-wrap;color:#1f2328;background:#fff;min-height:100%">${esc(pg.html)}</pre>`;
+    else html = pg.html;
+    el.innerHTML = html;
+    el.scrollTop = 0;
+    const srcText = pg.raw ? pg.html : html;
+    $("src").innerHTML = esc(srcText).replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="hl-comment">$1</span>');
+    el.querySelectorAll("[data-go]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); G.go(a.dataset.go); }));
+    if (!pg.oos && !pg.notFound) G.level.bind?.(el, G.S, G);
+    G.renderCookies();
+    if (pg.onShow) setTimeout(pg.onShow, 350);
+  },
+  renderCookies() {
+    const c = G.S.cookies;
+    if (!c || !Object.keys(c).length) { $("cookieList").innerHTML = `<p class="status">No cookies set by ${G.level.domain}.</p>`; return; }
+    $("cookieList").innerHTML = `<p class="status">Cookies for ${G.level.domain}. Edit a value, press Save, then reload the page.</p>` +
+      Object.entries(c).map(([k, v]) => `<div class="cookie-row"><b>${esc(k)}</b><input data-ck="${esc(k)}" value="${esc(v)}" spellcheck="false"></div>`).join("") +
+      `<div class="row"><button class="small solid" id="ckSave">Save cookies</button></div>`;
+    $("ckSave").onclick = () => {
+      document.querySelectorAll("[data-ck]").forEach(i => c[i.dataset.ck] = i.value.trim());
+      G.toast("🍪 Cookies saved. Reload the page (⟳) to send them.");
+    };
+  },
+  intercept(req, onForward) {
+    G.pending = onForward;
+    $("proxyReq").value = req;
+    $("proxyStatus").textContent = "🟣 REQUEST INTERCEPTED! Edit it if you want, then press Forward.";
+    $("proxyStatus").classList.add("live");
+    $("fwdBtn").disabled = $("dropBtn").disabled = false;
+    showTab("proxy");
+    const b = document.querySelector('[data-tab="proxy"]'); b.classList.remove("ping"); void b.offsetWidth; b.classList.add("ping");
+    tone(660, .1, "square", .04); tone(990, .1, "square", .04, .1);
+  },
+  clearProxy() {
+    G.pending = null;
+    $("proxyStatus").textContent = "Intercept is ON. Waiting for the website to send a request...";
+    $("proxyStatus").classList.remove("live");
+    $("fwdBtn").disabled = $("dropBtn").disabled = true;
+  },
+  fakeAlert(origin, msg, then) {
+    const box = document.createElement("div");
+    box.style.cssText = "position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-start;justify-content:center;padding-top:40px;z-index:5";
+    box.innerHTML = `<div style="background:#fff;color:#222;border-radius:10px;padding:18px 22px;min-width:260px;box-shadow:0 10px 40px rgba(0,0,0,.4);font-family:system-ui"><b>${esc(origin)}</b><p>${esc(msg)}</p><div style="text-align:right"><button style="background:#1a73e8;color:#fff;border:0;border-radius:6px;padding:6px 18px">OK</button></div></div>`;
+    $("page").appendChild(box);
+    tone(700, .12, "sine", .06);
+    box.querySelector("button").onclick = () => { box.remove(); then(); };
+  },
+  showExternal(host) {
+    $("url").value = "https://" + host + "/";
+    $("page").innerHTML = `<div style="background:#1a0010;color:#ff4d8d;min-height:100%;padding:40px;text-align:center;font-family:system-ui"><div style="font-size:70px">😈</div><h2>Welcome to ${esc(host)}</h2><p>"Please enter your LoginHub password again" — a phishing page, reached through a <b>real LoginHub link</b>.</p></div>`;
+  },
+  win(flag) {
+    if (G.won) return; G.won = true;
+    sfx.win(); dollarRain(30);
+    openModal(`<div class="granted">ACCESS GRANTED</div><div class="flag">🚩 ${esc(flag)}</div>
+      <p style="text-align:center;color:var(--muted)">You found the bug! Now write the report to get paid.</p>
+      <div style="text-align:center"><button class="solid" id="toReport">Write report ✍</button></div>`);
+    $("toReport").onclick = report;
+  }
+};
+
+/* ================= Screens ================= */
+function showTab(name) {
+  document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== name));
+}
+document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { sfx.click(); showTab(b.dataset.tab); });
+
+function unlocked(i) { return i === 0 || !!save.solved[LEVELS[i - 1].id]; }
+
+function renderTargets() {
+  $("grid").innerHTML = LEVELS.map((L, i) => {
+    const s = save.solved[L.id], lock = !unlocked(i);
+    return `<div class="card ${lock ? "locked" : ""} ${s ? "pwned" : ""}" data-i="${i}">
+      ${s ? '<div class="stamp">PWNED</div>' : ""}
+      <div class="num">TARGET ${String(i + 1).padStart(2, "0")} ${lock ? "🔒" : ""}</div>
+      <h3>${L.name}</h3><div class="co">${L.company}</div>
+      <div class="meta"><span>${"💀".repeat(L.diff)}</span><span class="bounty">${s ? "earned $" + s.paid.toLocaleString() : "$" + L.bounty.toLocaleString()}</span></div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".card").forEach(c => c.onclick = () => {
+    const i = +c.dataset.i;
+    if (!unlocked(i)) { G.toast("🔒 Pwn the previous target first.", true); return; }
+    startLevel(i);
+  });
+  updateHud();
+}
+
+function updateHud(animateFrom) {
+  const solved = Object.keys(save.solved).length;
+  $("pwned").textContent = `${solved}/${LEVELS.length}`;
+  $("rank").textContent = rankOf(save.money);
+  if (animateFrom !== undefined) {
+    const start = performance.now(), from = animateFrom, to = save.money;
+    const step = t => { const k = Math.min(1, (t - start) / 1200); $("money").textContent = "$" + Math.round(from + (to - from) * k).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  } else $("money").textContent = "$" + save.money.toLocaleString();
+}
+
+function startLevel(i) {
+  sfx.click();
+  const L = LEVELS[i];
+  G.level = L; G.idx = i; G.S = L.init(); G.history = []; G.currentUrl = ""; G.hints = 0; G.won = false;
+  G.clearProxy(); $("proxyReq").value = ""; $("decIn").value = ""; $("decOut").textContent = "";
+  showTab("source");
+  renderBrief();
+  $("targets").classList.add("hidden"); $("mission").classList.remove("hidden");
+  G.go("https://" + L.domain + L.start);
+  window.scrollTo({ top: 0 });
+}
+
+function renderBrief() {
+  const L = G.level, replay = !!save.solved[L.id];
+  $("brief").innerHTML = `
+    <button class="small" id="backTargets">← Targets</button>
+    <h2 style="margin-top:10px">${L.name}</h2>
+    <div class="co">${L.company} · ${"💀".repeat(L.diff)} · <span style="color:var(--amber)">${replay ? "replay (no bounty)" : "Bounty up to $" + L.bounty.toLocaleString()}</span></div>
+    <p>${L.brief}</p>
+    <div class="scope">In scope: <b>${L.domain}</b> only</div>
+    <div class="hints">${L.hints.slice(0, G.hints).map((h, i) => `<div class="hint">💡 Hint ${i + 1}: ${h}</div>`).join("")}</div>
+    ${G.hints < L.hints.length ? `<button class="small pink" id="hintBtn" style="margin-top:10px">Get hint ${G.hints + 1} (−15% bounty)</button>` : ""}`;
+  $("backTargets").onclick = () => { $("mission").classList.add("hidden"); $("targets").classList.remove("hidden"); renderTargets(); };
+  const hb = $("hintBtn"); if (hb) hb.onclick = () => { G.hints++; sfx.click(); renderBrief(); };
+}
+
+/* ================= Report & payout ================= */
+function report() {
+  const L = G.level;
+  const opts = shuffle([L.vuln, ...shuffle(VULNS.filter(v => v !== L.vuln)).slice(0, 4)]);
+  let vuln = null, sev = null;
+  openModal(`<h2>📝 Bug Report</h2>
+    <p style="color:var(--muted)">Target: ${L.company} (${L.domain})</p>
+    <b>What type of vulnerability is it?</b><div class="opts" id="ov">${opts.map(o => `<button data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>
+    <b>How severe is it?</b><div class="opts" id="os">${SEVS.map(s => `<button data-s="${s}">${s}</button>`).join("")}</div>
+    <button class="solid" id="submitR" disabled>Submit report 🚀</button>`);
+  const check = () => $("submitR").disabled = !(vuln && sev);
+  document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { vuln = b.dataset.v; sfx.click(); document.querySelectorAll("[data-v]").forEach(x => x.classList.toggle("on", x === b)); check(); });
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { sev = b.dataset.s; sfx.click(); document.querySelectorAll("[data-s]").forEach(x => x.classList.toggle("on", x === b)); check(); });
+  $("submitR").onclick = () => payout(vuln === L.vuln, sev === L.sev);
+}
+
+function payout(typeOk, sevOk) {
+  const L = G.level, replay = !!save.solved[L.id];
+  let amount = L.bounty * Math.max(0.1, 1 - 0.15 * G.hints);
+  if (!typeOk) amount *= 0.5;
+  if (sevOk) amount *= 1.2;
+  amount = Math.round(amount / 10) * 10;
+  const lines = [];
+  if (typeOk && sevOk) lines.push(pick(["Triager: \"Clean report, correct severity. Bounty approved! 🔥\"", "Triager: \"Wow, steps to reproduce AND correct severity? Marry me. 💍\"", "Triager: \"Beautiful report. Rewarded + bonus.\""]));
+  else {
+    if (!typeOk) lines.push(`Triager: "Hmm, that's actually <b>${esc(L.vuln)}</b>. Paying 50% for the wrong bug class."`);
+    if (!sevOk) lines.push(`Triager: "We adjusted severity to <b>${L.sev}</b>. No severity bonus this time."`);
+  }
+  if (G.hints) lines.push(`(${G.hints} hint${G.hints > 1 ? "s" : ""} used: −${G.hints * 15}%)`);
+  const before = save.money, oldRank = rankOf(before);
+  if (!replay) { save.money += amount; save.solved[L.id] = { paid: amount }; persist(); }
+  const newRank = rankOf(save.money);
+  const next = G.idx + 1 < LEVELS.length ? G.idx + 1 : null;
+  openModal(`<h2>${replay ? "Replay complete" : "💰 BOUNTY PAID"}</h2>
+    <div class="big-money" id="bm">${replay ? "$0" : "$0"}</div>
+    ${replay ? '<p style="text-align:center;color:var(--muted)">Already paid for this target. Practice makes perfect!</p>' : ""}
+    <div class="triager">${lines.join("<br>")}</div>
+    ${newRank !== oldRank ? `<div class="rankup">⬆ RANK UP: ${newRank.toUpperCase()}</div>` : ""}
+    <b style="color:var(--neon)">🛠 How to fix it</b><div class="fix">${L.fix}</div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${next !== null ? '<button class="solid" id="nextBtn">Next target ▶</button>' : ""}
+      <button id="toTargets">All targets</button>
+    </div>
+    ${next === null && !replay && Object.keys(save.solved).length === LEVELS.length ? '<p class="rankup">🏆 ALL TARGETS PWNED. You are a legend. Share your score!</p>' : ""}`);
+  if (!replay) {
+    sfx.cash(); dollarRain(40);
+    const start = performance.now();
+    const step = t => { const k = Math.min(1, (t - start) / 1000); if (!$("bm")) return; $("bm").textContent = "$" + Math.round(amount * k).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+    updateHud(before);
+  }
+  if ($("nextBtn")) $("nextBtn").onclick = () => { closeModal(); startLevel(next); };
+  $("toTargets").onclick = () => { closeModal(); $("mission").classList.add("hidden"); $("targets").classList.remove("hidden"); renderTargets(); };
+}
+
+function openModal(html) { $("modal").innerHTML = html; $("overlay").classList.remove("hidden"); }
+function closeModal() { $("overlay").classList.add("hidden"); }
+
+function dollarRain(n) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("div");
+    d.className = "dollar"; d.textContent = pick(["$", "$", "💰", "💵", "🚩"]);
+    d.style.left = Math.random() * 100 + "vw";
+    d.style.animationDuration = 1.5 + Math.random() * 2 + "s";
+    d.style.animationDelay = Math.random() * .8 + "s";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 4500);
+  }
+}
+
+/* ================= Tools wiring ================= */
+$("urlForm").onsubmit = e => { e.preventDefault(); sfx.click(); G.go($("url").value); };
+$("reloadBtn").onclick = () => { sfx.click(); G.reload(); };
+$("backBtn").onclick = () => { sfx.click(); const h = G.history.pop(); if (h) G.go(h, false); };
+$("fwdBtn").onclick = () => { const cb = G.pending; const txt = $("proxyReq").value; G.clearProxy(); sfx.click(); cb && cb(txt); };
+$("dropBtn").onclick = () => { G.clearProxy(); $("proxyReq").value = ""; G.toast("Request dropped. 🗑"); };
+document.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => {
+  const v = $("decIn").value; let out;
+  try {
+    out = { b64d: () => b64d(v), b64e: () => b64e(v), urld: () => decodeURIComponent(v), urle: () => encodeURIComponent(v),
+            hexd: () => v.replace(/[^0-9a-f]/gi, "").match(/../g).map(h => String.fromCharCode(parseInt(h, 16))).join("") }[b.dataset.dec]();
+  } catch { out = "⚠ Could not decode that. Is it the right format?"; }
+  $("decOut").textContent = out; sfx.click();
+});
+$("logo").onclick = () => { if (!$("mission").classList.contains("hidden")) $("backTargets")?.click(); };
+$("soundBtn").onclick = () => { save.sound = !save.sound; persist(); $("soundBtn").textContent = save.sound ? "🔊" : "🔇"; sfx.click(); };
+$("soundBtn").textContent = save.sound ? "🔊" : "🔇";
+$("shareBtn").onclick = () => {
+  const text = `💀 I'm a ${rankOf(save.money)} in 0DAY: pwned ${Object.keys(save.solved).length}/${LEVELS.length} targets and earned $${save.money.toLocaleString()} in (fake) bug bounties. Can you beat me? https://y4sh-0day.github.io/Top/0day.html`;
+  navigator.clipboard?.writeText(text).then(() => G.toast("📋 Copied! Paste it anywhere to brag."), () => G.toast(text));
+};
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("overlay").classList.contains("hidden") && !G.won) closeModal(); });
+
+/* ================= Matrix rain ================= */
+(function rain() {
+  const c = $("rain"), x = c.getContext("2d"); let cols, drops;
+  const chars = "01アイウエオカキクケコ0DAY$#{}<>/\\".split("");
+  const size = () => { c.width = innerWidth; c.height = innerHeight; cols = Math.ceil(c.width / 16); drops = Array.from({ length: cols }, () => Math.random() * -50); };
+  size(); addEventListener("resize", size);
+  setInterval(() => {
+    x.fillStyle = "rgba(5,7,10,.12)"; x.fillRect(0, 0, c.width, c.height);
+    x.font = "15px monospace";
+    drops.forEach((y, i) => {
+      x.fillStyle = Math.random() < .03 ? "#c8ffe6" : "#00ff9c";
+      x.fillText(pick(chars), i * 16, y * 16);
+      drops[i] = y * 16 > c.height && Math.random() > .975 ? 0 : y + 1;
+    });
+  }, 60);
+})();
+
+/* ================= Boot sequence ================= */
+(function boot() {
+  const lines = [
+    "[ OK ] Loading 0DAY kernel v1.337...",
+    "[ OK ] Mounting /dev/coffee",
+    "[ OK ] Bypassing boredom firewall",
+    '<span class="warn">[WARN] Ethics module: ENABLED. Only hack what you have permission to hack.</span>',
+    `[ OK ] Connecting to bug bounty programs... ${LEVELS.length} targets found`,
+    `[ OK ] Wallet: $${save.money.toLocaleString()} · Rank: ${rankOf(save.money)}`,
+    "",
+    "&gt; Welcome back, hunter_"
+  ];
+  let i = 0, done = false;
+  const end = () => { if (done) return; done = true; $("boot").remove(); };
+  const tick = () => {
+    if (done) return;
+    if (i >= lines.length) { setTimeout(end, 700); return; }
+    $("bootText").innerHTML += lines[i++] + "<br>"; sfx.type();
+    setTimeout(tick, 170 + Math.random() * 150);
+  };
+  $("boot").onclick = end; addEventListener("keydown", end, { once: true });
+  tick();
+})();
+
+renderTargets();
+</script>
+</body>
+</html>

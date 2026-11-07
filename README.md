@@ -39,6 +39,17 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## 💀 0DAY: the bug bounty game
+
+Hack 10 fake companies in a fake browser: **https://y4sh-0day.github.io/Top/0day.html**
+
+- **10 targets**, one bug each: information disclosure, robots.txt, IDOR, XSS, SQL injection, price tampering, open redirect, cookie tampering, path traversal and SSRF
+- Built-in hacker tools: an editable address bar, **page source**, an **intercepting proxy**, a **cookie editor** and a **decoder**
+- Write a **bug report** (type and severity) and get paid by a triager with opinions
+- Ranks from **Script Kiddie** to **0DAY Legend**, plus hints, sounds and "ACCESS GRANTED" moments
+- Learn **how to fix** each bug after you exploit it
+- 100% simulated and legal: nothing leaves your browser
+
 ## ⌨️ Typing trainer (Mac and phone)
 
 Learn to **touch type** at **https://y4sh-0day.github.io/Top/typing.html**
