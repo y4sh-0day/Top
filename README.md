@@ -39,6 +39,16 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## 🟢 Slime Party
+
+Eat, grow and swallow other slimes: **https://y4sh-0day.github.io/Top/slime.html**
+
+- Eat dots to grow, swallow smaller slimes and run from bigger ones. The biggest slime after 3 minutes wins 👑
+- 22 AI slimes with their own personalities, plus a jelly wobble, googly eyes and hats
+- Power-ups: ⚡ speed · 🧲 magnet · 🛡 shield · 🍄 mega growth
+- **Mac:** move with the mouse, boost with Space. **Phone:** a touch joystick and a BOOST button
+- Leaderboard, minimap, kill streaks, sound effects and a saved personal best
+
 ## 💀 0DAY: the bug bounty game
 
 Hack 10 fake companies in a fake browser: **https://y4sh-0day.github.io/Top/0day.html**
