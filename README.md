@@ -39,6 +39,20 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## 🐍 Neon Serpents: multiplayer
+
+A neon snake battle you can play **with friends**: **https://y4sh-0day.github.io/Top/snake.html**
+
+- **Create a room** → send the invite link (or the 5-letter code) → friends join instantly. No accounts, no install
+- Up to 16 players per room, with AI bots filling empty spots (you can turn them off)
+- Your **head** must never touch another snake. Trap people by cutting them off with **boost**
+- 🧲 Magnet · 👻 Ghost · 🔥 Turbo power-ups, 💎 **Mega Orbs** every 45s, and a 👑 **King** bounty
+- Emotes (😂 😡 👋 💀) to taunt your friends, plus a leaderboard, minimap and kill feed
+- Works on **Mac** (mouse + Space) and **phone** (joystick + BOOST button)
+- Play **solo vs bots** any time
+
+How it works: the player who creates the room runs the game in their browser, and friends connect directly to them with WebRTC ([PeerJS](https://peerjs.com/)). The host should keep their tab open.
+
 ## 🟢 Slime Party
 
 Eat, grow and swallow other slimes: **https://y4sh-0day.github.io/Top/slime.html**

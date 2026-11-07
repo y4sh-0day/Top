@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Neon Serpents</title>
+<meta name="description" content="Neon Serpents: a multiplayer neon snake battle in your browser. Create a room, send the link, and play with friends. Power-ups, mega orbs, kings and emotes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root { --bg: #05060d; --card: rgba(10, 12, 28, .94); --cyan: #00f5d4; --pink: #f15bb5; --yellow: #fee440; --muted: #8a8fb5; --red: #ff3366; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: #fff;
+    font-family: "Exo 2", system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas#c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; color: #fff; }
+  .hidden { display: none !important; }
+
+  .screen { position: fixed; inset: 0; z-index: 20; display: flex; padding: 16px; overflow: auto;
+    background: radial-gradient(circle at 50% 20%, rgba(0,245,212,.12), transparent 55%), rgba(3,4,10,.6); }
+  .card { margin: auto; width: 100%; max-width: 460px; background: var(--card); border: 1px solid rgba(0,245,212,.25); border-radius: 22px;
+    padding: 24px; text-align: center; box-shadow: 0 0 60px rgba(0,245,212,.12), 0 20px 60px rgba(0,0,0,.6); }
+  h1 { font-family: Orbitron, sans-serif; font-weight: 900; margin: 0; font-size: clamp(30px, 8.5vw, 46px); line-height: 1.05; letter-spacing: 2px;
+    color: #fff; text-shadow: 0 0 10px var(--cyan), 0 0 30px var(--cyan), 0 0 60px var(--pink); }
+  h1 span { color: var(--pink); text-shadow: 0 0 10px var(--pink), 0 0 30px var(--pink); }
+  .tag { color: var(--muted); margin: 8px 0 16px; }
+  input.txt { width: 100%; font: inherit; font-size: 18px; text-align: center; padding: 12px; border-radius: 12px; color: #fff; outline: none;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); user-select: text; -webkit-user-select: text; }
+  input.txt:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,245,212,.3); }
+  .label { color: var(--muted); font-size: 13px; text-align: left; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
+  .skins { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .skin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid transparent; }
+  .skin.on { border-color: #fff; box-shadow: 0 0 14px rgba(255,255,255,.6); transform: scale(1.1); }
+  .btn { display: block; width: 100%; padding: 14px; font-size: 19px; font-weight: 700; margin-top: 10px; letter-spacing: .5px; }
+  .btn.primary { background: linear-gradient(90deg, #00f5d4, #00bbf9); color: #021a17; box-shadow: 0 0 20px rgba(0,245,212,.45); }
+  .btn.pink { background: linear-gradient(90deg, #f15bb5, #9b5de5); box-shadow: 0 0 20px rgba(241,91,181,.4); }
+  .btn.ghost { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15); font-size: 16px; }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 3px; }
+  .row .btn { width: auto; margin: 0; padding: 0 18px; }
+  .check { display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .how { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin-top: 16px; text-align: left; background: rgba(255,255,255,.03); border-radius: 12px; padding: 10px 14px; }
+  .how b { color: #fff; }
+  .best { color: var(--yellow); margin-top: 10px; font-size: 14px; }
+  .err { color: #ff8fa8; font-size: 14px; margin-top: 10px; min-height: 1em; }
+  nav.games { margin-top: 14px; font-size: 13px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  nav.games a { color: var(--muted); }
+  .invite-big { font-family: Orbitron, sans-serif; font-size: 30px; letter-spacing: 6px; color: var(--yellow); text-shadow: 0 0 14px rgba(254,228,64,.6); margin: 6px 0; }
+  .spinner { width: 46px; height: 46px; border-radius: 50%; border: 4px solid rgba(255,255,255,.1); border-top-color: var(--cyan); margin: 16px auto; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .pill { position: absolute; background: rgba(5,6,13,.65); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 6px 12px; font-size: 15px; }
+  #stat { top: 10px; left: 10px; } #stat b { color: var(--cyan); }
+  #room { top: 10px; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: auto; display: flex; gap: 10px; align-items: center; font-size: 14px; }
+  #room b { color: var(--yellow); letter-spacing: 2px; font-family: Orbitron, sans-serif; }
+  #room button { background: rgba(0,245,212,.15); border: 1px solid var(--cyan); padding: 3px 10px; font-size: 13px; border-radius: 8px; }
+  #lb { top: 10px; right: 10px; min-width: 170px; font-size: 13.5px; line-height: 1.6; }
+  #lb h4 { margin: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  #lb .me { color: var(--cyan); font-weight: 700; }
+  #lb .n { display: inline-block; max-width: 105px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+  #feed { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); width: min(92vw, 460px); text-align: center; font-size: 15px; }
+  #feed div { animation: fade 3.2s forwards; text-shadow: 0 2px 6px #000; }
+  @keyframes fade { 0%,75% { opacity: 1; } 100% { opacity: 0; } }
+  #big { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-family: Orbitron, sans-serif; font-weight: 900; white-space: nowrap;
+    font-size: clamp(22px, 6vw, 46px); text-shadow: 0 0 20px var(--pink), 0 4px 10px #000; opacity: 0; }
+  #big.pop { animation: pop 1.8s forwards; }
+  @keyframes pop { 0% { transform: translate(-50%,-50%) scale(.4); opacity: 0; } 15% { transform: translate(-50%,-50%) scale(1.12); opacity: 1; }
+    25% { transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #emotes { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; }
+  #emotes button { background: rgba(5,6,13,.65); border: 1px solid rgba(255,255,255,.12); font-size: 22px; width: 46px; height: 46px; position: relative; }
+  #emotes small { position: absolute; bottom: 1px; right: 4px; font-size: 9px; color: var(--muted); }
+  #boostBtn { position: fixed; right: 20px; bottom: 76px; width: 92px; height: 92px; border-radius: 50%; z-index: 6; font-weight: 700; font-size: 15px;
+    font-family: Orbitron, sans-serif; background: radial-gradient(circle at 35% 30%, #ff9ad5, #f15bb5 60%, #9b1d6a); box-shadow: 0 0 24px rgba(241,91,181,.6); }
+  #boostBtn.on { transform: scale(.94); box-shadow: 0 0 40px rgba(241,91,181,1); }
+  .hint { position: absolute; bottom: 66px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.5); font-size: 12.5px; white-space: nowrap; }
+  #soundBtn { position: absolute; top: 48px; left: 10px; pointer-events: auto; background: rgba(5,6,13,.65); padding: 5px 9px; font-size: 15px; }
+
+  @media (max-height: 520px), (max-width: 560px) {
+    #lb { font-size: 11.5px; min-width: 120px; line-height: 1.45; padding: 4px 9px; }
+    #lb .n { max-width: 80px; }
+    #boostBtn { bottom: 18px; right: 16px; width: 78px; height: 78px; font-size: 13px; }
+    #emotes button { width: 38px; height: 38px; font-size: 18px; }
+    #room { font-size: 12px; } .pill { font-size: 13px; }
+  }
+  .dead-title { font-family: Orbitron, sans-serif; font-size: 26px; color: var(--red); text-shadow: 0 0 16px var(--red); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+  .stats div { background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 4px; }
+  .stats small { display: block; color: var(--muted); font-size: 12px; }
+  .stats b { font-size: 22px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="pill" id="stat">Length <b id="len">10</b> · Kills <b id="kills">0</b></div>
+  <button id="soundBtn">🔊</button>
+  <div class="pill" id="room"></div>
+  <div class="pill" id="lb"></div>
+  <div id="feed"></div>
+  <div id="big"></div>
+  <div class="hint" id="hint">Steer with mouse · hold <b>click</b> or <b>Space</b> to boost · <b>1-4</b> emotes</div>
+  <div id="emotes"></div>
+</div>
+<button id="boostBtn" class="hidden">BOOST</button>
+
+<!-- Menu -->
+<div class="screen" id="menu">
+  <div class="card">
+    <h1>NEON<br><span>SERPENTS</span></h1>
+    <p class="tag">Grow. Trap. Glow. Play with your friends. 🐍</p>
+    <input class="txt" id="name" maxlength="14" placeholder="Your snake name" autocomplete="off">
+    <div class="label">Skin</div>
+    <div class="skins" id="skins"></div>
+    <button class="btn primary hidden" id="joinLinkBtn"></button>
+    <button class="btn primary" id="soloBtn">▶ PLAY SOLO vs BOTS</button>
+    <button class="btn pink" id="hostBtn">👥 CREATE ROOM FOR FRIENDS</button>
+    <label class="check"><input type="checkbox" id="botsChk" checked> Add bots to my room</label>
+    <div class="row"><input class="txt" id="codeIn" maxlength="5" placeholder="ROOM CODE" autocomplete="off"><button class="btn ghost" id="joinBtn">JOIN</button></div>
+    <div class="err" id="menuErr"></div>
+    <div class="best" id="bestTxt"></div>
+    <div class="how">
+      🐍 <b>Eat</b> glowing orbs to grow longer.<br>
+      💥 If your <b>head</b> touches another snake, you explode into orbs. Make others crash into <b>you</b>!<br>
+      ⚡ <b>Boost</b> to cut people off (it costs length).<br>
+      🧲 Magnet · 👻 Ghost (pass through snakes) · 🔥 Turbo (free boost)<br>
+      💎 <b>Mega Orbs</b> appear every 45 seconds. Race for them!<br>
+      👑 The longest snake is <b>King</b>. Take the King down for a mega reward.
+    </div>
+    <nav class="games"><a href="./">CmdRush</a><a href="typing.html">TypeFast</a><a href="0day.html">0DAY</a><a href="slime.html">Slime Party</a><a href="https://github.com/y4sh-0day/Top">⭐ GitHub</a></nav>
+  </div>
+</div>
+
+<!-- Connecting / room created -->
+<div class="screen hidden" id="conn">
+  <div class="card">
+    <div id="connTitle" style="font-family:Orbitron,sans-serif;font-size:20px">Connecting...</div>
+    <div class="spinner" id="connSpin"></div>
+    <div id="connBody" style="color:var(--muted)"></div>
+    <button class="btn ghost" id="connCancel">Back to menu</button>
+  </div>
+</div>
+
+<!-- Dead -->
+<div class="screen hidden" id="dead">
+  <div class="card">
+    <div class="dead-title">💥 YOU CRASHED</div>
+    <div id="deadBy" style="margin-top:8px;color:var(--muted)"></div>
+    <div class="stats">
+      <div><small>Length</small><b id="dLen">0</b></div>
+      <div><small>Kills</small><b id="dKills">0</b></div>
+      <div><small>Time alive</small><b id="dTime">0s</b></div>
+    </div>
+    <div class="best" id="dBest"></div>
+    <button class="btn primary" id="respawnBtn">↻ RESPAWN</button>
+    <button class="btn ghost" id="shareBtn">Share score</button>
+    <button class="btn ghost" id="quitBtn">Leave game</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.random() * a.length | 0];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const wrapAng = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const isTouch = matchMedia("(pointer: coarse)").matches;
+const QS = new URLSearchParams(location.search);
+
+/* ================= constants ================= */
+const WORLD = 5000, SEG = 7, NORB = 1100, ORB_MAX = 2600, NPOW = 10, TICK = 1 / 60, SEND_EVERY = 3, MAX_PLAYERS = 16;
+const PAL = ["#00f5d4", "#f15bb5", "#fee440", "#9b5de5", "#00bbf9", "#ff6b35", "#39ff14", "#ff3366"];
+const SKINS = [["#00f5d4", "#00bbf9"], ["#f15bb5", "#fee440"], ["#9b5de5", "#f15bb5"], ["#fee440", "#ff6b35"],
+  ["#39ff14", "#00f5a0"], ["#ff3366", "#ffcc00"], ["#ffffff", "#6c63ff"], ["#00bbf9", "#ff6b35"]];
+const BOT_NAMES = ["Noodle", "Sir Hiss", "Zigzag", "Wiggles", "Viper Vic", "Slinky", "Neon Nate", "Spaghetti", "Glowworm", "Bolt",
+  "Zappy", "Twisty", "Lil Snek", "Kaa-Boom", "Ramen", "Jelly Rope", "Pretzel", "Sir Coil", "Udon", "Danger Noodle", "Sssam", "Hissy Fit"];
+const EMOTES = ["😂", "😡", "👋", "💀"];
+const POW = { n: "🧲", g: "👻", t: "🔥" };
+const nSeg = s => Math.min(900, 14 + Math.floor(s * .55));
+const radius = s => 9 + Math.min(17, Math.sqrt(s) * .42);
+const orbR = o => o.k === "m" ? 22 : o.k ? 16 : Math.min(11, 3.5 + o.v * 1.6);
+
+/* ================= sound ================= */
+let actx, soundOn = store.get("serp:sound", true), lastBlip = 0;
+function tone(f, d = .08, type = "sine", v = .05, delay = 0, slide = 0) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch {}
+}
+const sfx = {
+  eat() { const n = performance.now(); if (n - lastBlip < 55) return; lastBlip = n; tone(rnd(700, 1100), .05, "sine", .02); },
+  boom() { tone(220, .5, "sawtooth", .07, 0, .15); tone(90, .4, "square", .05, .05, .5); },
+  kill() { [440, 660, 990].forEach((f, i) => tone(f, .12, "square", .045, i * .07)); },
+  power() { [660, 880, 1320].forEach((f, i) => tone(f, .09, "triangle", .05, i * .05)); },
+  mega() { [523, 784, 1046, 1568].forEach((f, i) => tone(f, .16, "square", .04, i * .1)); },
+  boost() { tone(180, .25, "sawtooth", .025, 0, 2.5); }
+};
+
+/* ================= SIMULATION (solo + host) ================= */
+const sim = { snakes: new Map(), orbs: new Map(), grid: new Map(), bodyGrid: new Map(), nid: 1, time: 0,
+  adds: [], rems: [], events: [], eatenFx: [], nat: 0, pows: 0, powT: 0, lastMega: 0, leaderId: 0, bots: true, botN: 14, botCheck: 0 };
+const OC = 120, okey = (x, y) => ((x / OC) | 0) * 1000 + ((y / OC) | 0);
+const BC = 40, bkey = (x, y) => ((x / BC) | 0) * 2000 + ((y / BC) | 0);
+
+function simReset(botsOn, botN) {
+  Object.assign(sim, { snakes: new Map(), orbs: new Map(), grid: new Map(), bodyGrid: new Map(), nid: 1, time: 0,
+    adds: [], rems: [], events: [], eatenFx: [], nat: 0, pows: 0, powT: 0, lastMega: 10, leaderId: 0, bots: botsOn, botN, botCheck: 0 });
+  for (let i = 0; i < NORB; i++) addOrb(rnd(30, WORLD - 30), rnd(30, WORLD - 30), Math.random() < .85 ? 1 : 2, pick(PAL), "", true);
+  for (let i = 0; i < NPOW; i++) addOrb(rnd(200, WORLD - 200), rnd(200, WORLD - 200), 0, "#ffffff", pick(Object.keys(POW)));
+  sim.adds = [];
+}
+function addOrb(x, y, v, c, k = "", nat = false) {
+  if (!k && !nat && sim.orbs.size > ORB_MAX) return null;
+  x = clamp(x, 15, WORLD - 15); y = clamp(y, 15, WORLD - 15);
+  const o = { id: sim.nid++, x, y, v, c, k, nat };
+  sim.orbs.set(o.id, o);
+  const key = okey(x, y); let set = sim.grid.get(key); if (!set) sim.grid.set(key, set = new Set()); set.add(o.id);
+  if (nat) sim.nat++; if (k && k !== "m") sim.pows++;
+  sim.adds.push([o.id, Math.round(x), Math.round(y), Math.round(v * 10) / 10, c, k]);
+  return o;
+}
+function remOrb(o, eater) {
+  sim.orbs.delete(o.id); sim.grid.get(okey(o.x, o.y))?.delete(o.id);
+  if (o.nat) sim.nat--; if (o.k && o.k !== "m") sim.pows--;
+  sim.rems.push([o.id, eater || 0]);
+  sim.eatenFx.push([o.x, o.y, o.c, eater || 0, o.k]);
+}
+function newSnakeObj(name, skin, bot, owner) {
+  return { id: sim.nid++, name, skin, bot, owner, alive: false, score: 10, r: radius(10), body: [], x: 0, y: 0, ang: 0, tang: 0,
+    boost: false, boosting: false, pw: { n: 0, g: 0, t: 0 }, kills: 0, emote: -1, emoteT: 0, dropT: 0,
+    ai: { t: 0, target: 0, boostT: 0 }, bornAt: 0, respawnAt: 0 };
+}
+function spawnSnake(s) {
+  let best = null, bestD = -1;
+  for (let k = 0; k < 30; k++) {
+    const x = rnd(500, WORLD - 500), y = rnd(500, WORLD - 500);
+    let d = 1e9;
+    for (const o of sim.snakes.values()) if (o.alive && o !== s) for (let i = 0; i < o.body.length; i += 6) d = Math.min(d, Math.hypot(o.body[i].x - x, o.body[i].y - y));
+    if (d > bestD) { bestD = d; best = { x, y }; } if (d > 700) break;
+  }
+  Object.assign(s, { alive: true, score: 10, r: radius(10), x: best.x, y: best.y, ang: rnd(0, TAU), boost: false, boosting: false,
+    pw: { n: 0, g: 2.5, t: 0 }, kills: 0, emote: -1, emoteT: 0, bornAt: sim.time, body: [] });
+  s.tang = s.ang;
+  for (let i = 0; i < nSeg(10); i++) s.body.push({ x: s.x - Math.cos(s.ang) * i * SEG, y: s.y - Math.sin(s.ang) * i * SEG });
+}
+function addSnake(name, skin, bot, owner) { const s = newSnakeObj(name, skin, bot, owner); sim.snakes.set(s.id, s); spawnSnake(s); return s; }
+function removeSnake(s) { if (s.alive) killSnake(s, null, "left"); sim.snakes.delete(s.id); }
+
+function rope(b) {
+  for (let i = 1; i < b.length; i++) {
+    const p = b[i - 1], q = b[i], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+    if (d > SEG) { const k = SEG / d; q.x = p.x + dx * k; q.y = p.y + dy * k; }
+  }
+}
+function buildBodyGrid() {
+  const g = sim.bodyGrid; g.clear();
+  for (const s of sim.snakes.values()) {
+    if (!s.alive) continue;
+    for (const p of s.body) { const k = bkey(p.x, p.y); let a = g.get(k); if (!a) g.set(k, a = []); a.push(s, p.x, p.y); }
+  }
+}
+function probeHit(x, y, rr, self) {
+  const cr = Math.ceil((rr + 26) / BC), cx = (x / BC) | 0, cy = (y / BC) | 0;
+  for (let i = cx - cr; i <= cx + cr; i++) for (let j = cy - cr; j <= cy + cr; j++) {
+    const a = sim.bodyGrid.get(i * 2000 + j); if (!a) continue;
+    for (let n = 0; n < a.length; n += 3) {
+      const o = a[n]; if (o === self || o.pw.g > 0) continue;
+      const dx = a[n + 1] - x, dy = a[n + 2] - y, lim = rr + o.r * .85;
+      if (dx * dx + dy * dy < lim * lim) return o;
+    }
+  }
+  return null;
+}
+function killSnake(s, by, reason) {
+  s.alive = false;
+  const n = s.body.length, cnt = Math.ceil(n / 2), v = Math.min(14, Math.max(1, Math.max(10, s.score * .6) / cnt));
+  for (let i = 0; i < n; i += 2) { const p = s.body[i]; addOrb(p.x + rnd(-6, 6), p.y + rnd(-6, 6), v, s.skin[(i >> 2) & 1]); }
+  const king = s.id === sim.leaderId && by ? 1 : 0;
+  if (by) by.kills++;
+  if (king) addOrb(s.x, s.y, 60, "#fee440", "m");
+  sim.events.push({ k: "die", id: s.id, by: by ? by.id : 0, r: reason, sc: Math.round(s.score), king, x: Math.round(s.x), y: Math.round(s.y), c: s.skin[0] });
+  s.respawnAt = sim.time + 2.5;
+  s.body = [];
+}
+function eat(s) {
+  const reach = s.r + (s.pw.n > 0 ? 150 : 8), cr = Math.ceil((reach + 25) / OC), cx = (s.x / OC) | 0, cy = (s.y / OC) | 0;
+  const eaten = [];
+  for (let i = cx - cr; i <= cx + cr; i++) for (let j = cy - cr; j <= cy + cr; j++) {
+    const set = sim.grid.get(i * 1000 + j); if (!set) continue;
+    for (const id of set) { const o = sim.orbs.get(id); if (o && Math.hypot(o.x - s.x, o.y - s.y) < reach + orbR(o)) eaten.push(o); }
+  }
+  for (const o of eaten) {
+    if (o.k === "m") { s.score += o.v; sim.events.push({ k: "mega", id: s.id }); }
+    else if (o.k) { s.pw[o.k] = o.k === "g" ? 5 : 8; sim.events.push({ k: "pw", id: s.id, p: o.k }); }
+    else s.score += o.v;
+    remOrb(o, s.id);
+  }
+}
+function botAI(s, dt) {
+  if (s.ai.boostT > 0) s.ai.boostT -= dt;
+  s.boost = s.ai.boostT > 0;
+  if ((s.ai.t -= dt) > 0) return;
+  s.ai.t = rnd(.09, .15);
+  let tgt = s.ai.target && sim.orbs.get(s.ai.target);
+  if (!tgt || Math.random() < .07) {
+    let bestV = 0; tgt = null;
+    const cr = 4, cx = (s.x / OC) | 0, cy = (s.y / OC) | 0;
+    for (let i = cx - cr; i <= cx + cr; i++) for (let j = cy - cr; j <= cy + cr; j++) {
+      const set = sim.grid.get(i * 1000 + j); if (!set) continue;
+      for (const id of set) { const o = sim.orbs.get(id); const val = (o.k === "m" ? 80 : o.k ? 20 : o.v) / (Math.hypot(o.x - s.x, o.y - s.y) + 40); if (val > bestV) { bestV = val; tgt = o; } }
+    }
+    s.ai.target = tgt ? tgt.id : 0;
+  }
+  let desired = tgt ? Math.atan2(tgt.y - s.y, tgt.x - s.x) : s.ang + rnd(-.4, .4);
+  // aggressive: cut off a nearby head
+  if (s.score > 50 && Math.random() < .3) for (const o of sim.snakes.values()) {
+    if (o === s || !o.alive) continue;
+    const d = Math.hypot(o.x - s.x, o.y - s.y);
+    if (d < 260 && d > 60) { desired = Math.atan2(o.y + Math.sin(o.ang) * 120 - s.y, o.x + Math.cos(o.ang) * 120 - s.x); if (Math.random() < .15) s.ai.boostT = .5; break; }
+  }
+  const offs = [0, .35, -.35, .7, -.7, 1.1, -1.1, 1.6, -1.6, 2.3, -2.3], dists = [s.r * 2 + 12, s.r * 2 + 45, s.r * 2 + 90, s.r * 2 + 150];
+  let bestA = s.ang, bestScore = -1e9, bestSafe = 0;
+  for (const off of offs) {
+    const a = s.ang + off; let safe = 0;
+    for (const d of dists) {
+      const px = s.x + Math.cos(a) * d, py = s.y + Math.sin(a) * d;
+      if (px < 70 || py < 70 || px > WORLD - 70 || py > WORLD - 70 || probeHit(px, py, s.r + 6, s)) break;
+      safe++;
+    }
+    const sc = safe * 10 + (safe === dists.length ? Math.cos(wrapAng(desired - a)) * 6 : 0) - Math.abs(off) * .4;
+    if (sc > bestScore) { bestScore = sc; bestA = a; bestSafe = safe; }
+  }
+  s.tang = bestA;
+  if (bestSafe <= 1 && s.score > 20 && Math.random() < .3) s.ai.boostT = .3;
+}
+function simTick(dt) {
+  sim.time += dt;
+  for (const s of sim.snakes.values()) {
+    if (!s.alive) { if (s.bot && sim.time >= s.respawnAt) spawnSnake(s); continue; }
+    if (s.bot) botAI(s, dt);
+    const turn = 5 / (1 + (s.r - 9) / 14);
+    s.ang = wrapAng(s.ang + clamp(wrapAng(s.tang - s.ang), -turn * dt, turn * dt));
+    const turbo = s.pw.t > 0;
+    s.boosting = turbo || (s.boost && s.score > 12);
+    if (s.boost && s.score > 12 && !turbo) {
+      s.score -= 8 * dt;
+      if ((s.dropT -= dt) <= 0) { s.dropT = .12; const t = s.body[s.body.length - 1]; addOrb(t.x + rnd(-5, 5), t.y + rnd(-5, 5), .8, s.skin[0]); }
+    }
+    const sp = s.boosting ? 370 : 185;
+    s.x += Math.cos(s.ang) * sp * dt; s.y += Math.sin(s.ang) * sp * dt;
+    s.body[0].x = s.x; s.body[0].y = s.y;
+    rope(s.body);
+    const want = nSeg(s.score);
+    while (s.body.length < want) { const t = s.body[s.body.length - 1]; s.body.push({ x: t.x, y: t.y }); }
+    if (s.body.length > want) s.body.length = want;
+    s.r = radius(s.score);
+    for (const k in s.pw) if (s.pw[k] > 0) s.pw[k] = Math.max(0, s.pw[k] - dt);
+    if (s.emoteT > 0 && (s.emoteT -= dt) <= 0) s.emote = -1;
+  }
+  buildBodyGrid();
+  const dead = [];
+  for (const s of sim.snakes.values()) {
+    if (!s.alive) continue;
+    if (s.x < 0 || s.y < 0 || s.x > WORLD || s.y > WORLD) { dead.push([s, null, "wall"]); continue; }
+    if (s.pw.g > 0) continue;
+    const hit = probeHit(s.x, s.y, s.r * .7, s);
+    if (hit) dead.push([s, hit, "snake"]);
+  }
+  for (const [s, by, r] of dead) if (s.alive) killSnake(s, by && by.alive ? by : by, r);
+  for (const s of sim.snakes.values()) if (s.alive) eat(s);
+  let guard = 0;
+  while (sim.nat < NORB && guard++ < 40) addOrb(rnd(30, WORLD - 30), rnd(30, WORLD - 30), Math.random() < .85 ? 1 : 2, pick(PAL), "", true);
+  if (sim.pows < NPOW && (sim.powT -= dt) <= 0) { sim.powT = 3; addOrb(rnd(200, WORLD - 200), rnd(200, WORLD - 200), 0, "#ffffff", pick(Object.keys(POW))); }
+  if (sim.time - sim.lastMega > 45) {
+    sim.lastMega = sim.time;
+    let has = false; for (const o of sim.orbs.values()) if (o.k === "m") { has = true; break; }
+    if (!has) { addOrb(rnd(700, WORLD - 700), rnd(700, WORLD - 700), 80, "#fee440", "m"); sim.events.push({ k: "megaspawn" }); }
+  }
+  let lead = null; for (const s of sim.snakes.values()) if (s.alive && (!lead || s.score > lead.score)) lead = s;
+  sim.leaderId = lead ? lead.id : 0;
+  if ((sim.botCheck -= dt) <= 0) {
+    sim.botCheck = 2;
+    const humans = [...sim.snakes.values()].filter(s => !s.bot).length;
+    const bots = [...sim.snakes.values()].filter(s => s.bot);
+    const want = sim.bots ? Math.max(4, sim.botN - humans) : 0;
+    if (bots.length < want) {
+      const used = new Set(bots.map(b => b.name));
+      for (let i = bots.length; i < want; i++) {
+        const name = BOT_NAMES.find(n => !used.has(n)) || pick(BOT_NAMES); used.add(name);
+        addSnake(name, pick(SKINS), true, null);
+      }
+      broadcastRoster();
+    } else if (bots.length > want) { const b = bots.find(b => !b.alive) || bots[0]; removeSnake(b); broadcastRoster(); }
+  }
+}
+
+/* ================= NETWORK ================= */
+const NET = { mode: "none", peer: null, conns: new Map(), host: null, code: "", you: 0, sendT: 0, lastIn: null, tickN: 0 };
+function peerOpts() {
+  const o = { debug: 0, config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }, { urls: "stun:stun.cloudflare.com:3478" }] } };
+  const dev = QS.get("peer");
+  if (dev) { const [h, p] = dev.split(":"); Object.assign(o, { host: h, port: +p || 9000, path: "/", secure: false }); }
+  return o;
+}
+const genCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.random() * 31 | 0]).join("");
+const peerId = code => "neonserp-v1-" + code;
+
+let chunkSeq = 0;
+function packMsg(msg) {
+  const s = JSON.stringify(msg);
+  if (s.length < 5000) return [msg];
+  const id = ++chunkSeq, n = Math.ceil(s.length / 5000), out = [];
+  for (let i = 0; i < n; i++) out.push({ t: "ch", id, i, n, d: s.slice(i * 5000, (i + 1) * 5000) });
+  return out;
+}
+function sendTo(conn, parts) { if (!conn.open) return; for (const p of parts) { try { conn.send(p); } catch {} } }
+function roster() { return [...sim.snakes.values()].map(s => [s.id, s.name, s.skin, s.bot ? 1 : 0]); }
+function broadcastRoster() {
+  if (NET.mode !== "host") return;
+  const msg = { t: "roster", list: roster() }, parts = packMsg(msg);
+  for (const c of NET.conns.values()) sendTo(c.conn, parts);
+  view.roster = new Map(msg.list.map(r => [r[0], r]));
+}
+function packSnakes() {
+  const a = [];
+  for (const s of sim.snakes.values()) if (s.alive) a.push([s.id, Math.round(s.x * 10) / 10, Math.round(s.y * 10) / 10, Math.round(s.ang * 1000) / 1000,
+    Math.round(s.score * 10) / 10, (s.boosting ? 1 : 0) | (s.pw.g > 0 ? 2 : 0) | (s.pw.n > 0 ? 4 : 0) | (s.pw.t > 0 ? 8 : 0), s.emote, s.kills]);
+  return a;
+}
+function fullState() {
+  const orbs = []; for (const o of sim.orbs.values()) orbs.push([o.id, Math.round(o.x), Math.round(o.y), Math.round(o.v * 10) / 10, o.c, o.k]);
+  const bodies = [];
+  for (const s of sim.snakes.values()) if (s.alive) { const f = []; for (let i = 0; i < s.body.length; i += 2) f.push(Math.round(s.body[i].x), Math.round(s.body[i].y)); bodies.push([s.id, f]); }
+  return { orbs, bodies };
+}
+
+function startHost() {
+  if (!window.Peer) return menuError("Multiplayer couldn't load (check your internet or ad-blocker). Solo still works!");
+  NET.code = genCode();
+  showConn("Creating room...", "");
+  const peer = new Peer(peerId(NET.code), peerOpts());
+  NET.peer = peer;
+  peer.on("open", () => {
+    NET.mode = "host";
+    simReset($("botsChk").checked, 12);
+    const me = addSnake(myName(), mySkin(), false, "host");
+    NET.you = me.id;
+    view.roster = new Map(roster().map(r => [r[0], r]));
+    startGame();
+    showInvite(true);
+  });
+  peer.on("connection", conn => {
+    conn.on("data", d => hostData(conn, d));
+    conn.on("close", () => hostDrop(conn));
+    conn.on("error", () => hostDrop(conn));
+  });
+  peer.on("disconnected", () => { if (NET.mode === "host" && !peer.destroyed) peer.reconnect(); });
+  peer.on("error", e => {
+    if (e.type === "unavailable-id") { peer.destroy(); startHost(); return; }
+    if (NET.mode !== "host") netFail("Couldn't create a room: " + (e.type || e.message));
+  });
+}
+function hostData(conn, d) {
+  if (!d || typeof d !== "object") return;
+  const c = NET.conns.get(conn.peer);
+  if (d.t === "hello") {
+    if (c) return;
+    const humans = [...sim.snakes.values()].filter(s => !s.bot).length;
+    if (humans >= MAX_PLAYERS) { conn.send({ t: "full" }); return; }
+    const name = String(d.name || "Player").slice(0, 14), skin = SKINS[(d.skin | 0) % SKINS.length];
+    const s = addSnake(name, skin, false, conn.peer);
+    NET.conns.set(conn.peer, { conn, sid: s.id, seen: performance.now() });
+    sendTo(conn, packMsg({ t: "welcome", you: s.id, code: NET.code, roster: roster(), time: sim.time, ...fullState() }));
+    broadcastRoster();
+    sim.events.push({ k: "join", id: s.id });
+    return;
+  }
+  if (!c) return;
+  c.seen = performance.now();
+  const s = sim.snakes.get(c.sid); if (!s) return;
+  if (d.t === "in") { if (typeof d.a === "number" && isFinite(d.a)) s.tang = d.a; s.boost = !!d.b; }
+  else if (d.t === "ping") {}
+  else if (d.t === "spawn") { if (!s.alive) spawnSnake(s); }
+  else if (d.t === "emote") { const e = d.e | 0; if (e >= 0 && e < EMOTES.length) { s.emote = e; s.emoteT = 2.5; } }
+}
+function hostDrop(conn) {
+  const c = NET.conns.get(conn.peer); if (!c) return;
+  NET.conns.delete(conn.peer);
+  const s = sim.snakes.get(c.sid);
+  if (s) { sim.events.push({ k: "leave", name: s.name }); removeSnake(s); }
+  broadcastRoster();
+}
+function hostBroadcast() {
+  const msg = { t: "s", tm: Math.round(sim.time * 1000), sn: packSnakes(), oa: sim.adds, or: sim.rems, ev: sim.events };
+  const parts = packMsg(msg);
+  for (const c of NET.conns.values()) sendTo(c.conn, parts);
+}
+
+function joinRoom(code) {
+  code = code.toUpperCase().trim();
+  if (!/^[A-Z0-9]{5}$/.test(code)) return menuError("Room codes have 5 letters/numbers.");
+  if (!window.Peer) return menuError("Multiplayer couldn't load (check your internet or ad-blocker).");
+  NET.code = code;
+  showConn("Joining room " + code + "...", "Connecting to your friend's game");
+  const peer = new Peer(peerOpts()); NET.peer = peer;
+  const to = setTimeout(() => { if (NET.mode !== "client") netFail(`Couldn't reach room ${code}. Is the host still in the game? Different networks sometimes block direct connections; try again or use another Wi-Fi.`); }, 15000);
+  peer.on("open", () => {
+    const conn = peer.connect(peerId(code), { reliable: true, serialization: "json" });
+    NET.host = conn;
+    conn.on("open", () => conn.send({ t: "hello", name: myName(), skin: store.get("serp:skin", 0) }));
+    conn.on("data", d => clientData(d, to));
+    conn.on("close", () => { if (NET.mode === "client") netFail("The host left the game. 👋"); });
+  });
+  peer.on("error", e => {
+    clearTimeout(to);
+    if (e.type === "peer-unavailable") netFail(`Room ${code} not found. Check the code, or ask your friend to create a new room.`);
+    else if (NET.mode !== "client") netFail("Connection error: " + (e.type || e.message));
+  });
+}
+
+// heartbeat: drop silent friends (host) / detect a vanished host (client)
+setInterval(() => {
+  const now = performance.now();
+  if (NET.mode === "host") for (const c of [...NET.conns.values()]) if (now - c.seen > 10000) { try { c.conn.close(); } catch {} hostDrop(c.conn); }
+  if (NET.mode === "client") {
+    if (NET.host?.open) try { NET.host.send({ t: "ping" }); } catch {}
+    if (now - view.lastRecv > 7000) netFail("Lost connection to the host. They may have closed the game. 👋");
+  }
+}, 1000);
+
+/* ================= CLIENT VIEW ================= */
+const view = { snakes: new Map(), orbs: new Map(), roster: new Map(), offset: null, lastRecv: 0 };
+function vSnake(id) {
+  let v = view.snakes.get(id);
+  if (!v) { v = { id, samples: [], body: [], score: 10, flags: 0, emote: -1, kills: 0, alive: true, x: 0, y: 0, ang: 0, r: 9 }; view.snakes.set(id, v); }
+  return v;
+}
+const chunks = new Map();
+function clientData(d, to) {
+  if (!d || typeof d !== "object") return;
+  if (d.t === "ch") {
+    let c = chunks.get(d.id); if (!c) chunks.set(d.id, c = []);
+    c[d.i] = d.d;
+    if (c.filter(x => x !== undefined).length === d.n) { chunks.delete(d.id); let m; try { m = JSON.parse(c.join("")); } catch { return; } clientData(m, to); }
+    return;
+  }
+  if (d.t === "full") { clearTimeout(to); netFail("That room is full (16 players)."); return; }
+  if (d.t === "welcome") {
+    clearTimeout(to);
+    NET.mode = "client"; NET.you = d.you; view.lastRecv = performance.now();
+    view.snakes.clear(); view.orbs.clear();
+    view.roster = new Map(d.roster.map(r => [r[0], r]));
+    for (const o of d.orbs) view.orbs.set(o[0], { x: o[1], y: o[2], v: o[3], c: o[4], k: o[5] });
+    view.offset = null;
+    for (const [id, f] of d.bodies) {
+      const v = vSnake(id);
+      for (let i = 0; i < f.length; i += 2) {
+        v.body.push({ x: f[i], y: f[i + 1] });
+        if (i + 2 < f.length) v.body.push({ x: (f[i] + f[i + 2]) / 2, y: (f[i + 1] + f[i + 3]) / 2 });
+      }
+    }
+    startGame(); showInvite(false);
+    return;
+  }
+  if (d.t === "roster") { view.roster = new Map(d.list.map(r => [r[0], r])); for (const id of [...view.snakes.keys()]) if (!view.roster.has(id)) view.snakes.delete(id); return; }
+  if (d.t === "s") {
+    const now = performance.now(), est = d.tm - now;
+    view.offset = view.offset === null ? est : Math.max(est, view.offset - 1.5);
+    view.lastRecv = now;
+    const seen = new Set();
+    for (const a of d.sn) {
+      const v = vSnake(a[0]); seen.add(a[0]);
+      if (!v.alive) { v.alive = true; v.samples = []; v.body = []; }
+      v.samples.push({ t: d.tm, x: a[1], y: a[2], a: a[3] });
+      if (v.samples.length > 40) v.samples.shift();
+      v.score = a[4]; v.flags = a[5]; v.emote = a[6]; v.kills = a[7];
+    }
+    for (const v of view.snakes.values()) if (!seen.has(v.id)) v.alive = false;
+    for (const o of d.oa) view.orbs.set(o[0], { x: o[1], y: o[2], v: o[3], c: o[4], k: o[5] });
+    for (const [id, eater] of d.or) { const o = view.orbs.get(id); if (o) { eatFx(o.x, o.y, o.c, eater, o.k); view.orbs.delete(id); } }
+    for (const e of d.ev) handleEvent(e);
+  }
+}
+function interpSnake(v, rt) {
+  const S = v.samples; if (!S.length) return;
+  let p;
+  if (rt <= S[0].t) p = S[0];
+  else if (rt >= S[S.length - 1].t) {
+    const a = S[S.length - 1], b = S[S.length - 2] || a, dtS = Math.min(120, rt - a.t), span = (a.t - b.t) || 1;
+    p = { x: a.x + (a.x - b.x) / span * dtS, y: a.y + (a.y - b.y) / span * dtS, a: a.a };
+  } else {
+    let i = S.length - 2; while (i > 0 && S[i].t > rt) i--;
+    const a = S[i], b = S[i + 1], k = (rt - a.t) / ((b.t - a.t) || 1);
+    p = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, a: a.a + wrapAng(b.a - a.a) * k };
+  }
+  v.x = p.x; v.y = p.y; v.ang = p.a; v.r = radius(v.score);
+  if (!v.body.length || Math.hypot(v.body[0].x - v.x, v.body[0].y - v.y) > 300) { v.body = []; for (let i = 0; i < nSeg(v.score); i++) v.body.push({ x: v.x - Math.cos(v.ang) * i * SEG, y: v.y - Math.sin(v.ang) * i * SEG }); }
+  v.body[0] = { x: v.x, y: v.y };
+  rope(v.body);
+  const want = nSeg(v.score);
+  while (v.body.length < want) { const t = v.body[v.body.length - 1]; v.body.push({ x: t.x, y: t.y }); }
+  if (v.body.length > want) v.body.length = want;
+}
+
+/* ================= shared game flow ================= */
+let playing = false, me = { alive: false }, particles = [], cam = { x: WORLD / 2, y: WORLD / 2, z: .8 }, shake = 0;
+let input = { a: 0, boost: false }, mouse = { x: 0, y: 0, has: false, down: false }, joy = null, spaceDown = false, boostTouch = false;
+let myStats = { born: 0, best: 0, kills: 0 }, deadShown = false, lastDeath = null;
+let acc = 0, lastTick = performance.now(), simTimer = null;
+
+function myName() { const n = $("name").value.trim().slice(0, 14) || "Player"; store.set("serp:name", n); return n; }
+function mySkin() { return SKINS[store.get("serp:skin", 0) % SKINS.length]; }
+function nameOf(id) { const r = NET.mode === "client" ? view.roster.get(id) : sim.snakes.get(id); return r ? (NET.mode === "client" ? r[1] : r.name) : "someone"; }
+
+function startSolo() {
+  NET.mode = "solo";
+  simReset(true, 14);
+  const s = addSnake(myName(), mySkin(), false, "local");
+  NET.you = s.id;
+  startGame(); showInvite(false);
+}
+function startGame() {
+  ["menu", "conn", "dead"].forEach(id => $(id).classList.add("hidden"));
+  $("hud").classList.remove("hidden");
+  $("boostBtn").classList.toggle("hidden", !isTouch);
+  $("hint").classList.toggle("hidden", isTouch);
+  $("feed").innerHTML = "";
+  playing = true; deadShown = false; particles = [];
+  myStats = { born: performance.now(), kills: 0 };
+  if (NET.mode !== "client") {
+    clearInterval(simTimer); lastTick = performance.now(); acc = 0;
+    simTimer = setInterval(simLoop, 1000 / 60);
+  }
+  bigText("GO! 🐍");
+}
+function simLoop() {
+  const now = performance.now();
+  acc += Math.min(.25, (now - lastTick) / 1000); lastTick = now;
+  while (acc >= TICK) {
+    acc -= TICK;
+    const s = sim.snakes.get(NET.you);
+    if (s && s.alive) { s.tang = input.a; s.boost = input.boost; }
+    simTick(TICK);
+    if (++NET.tickN % SEND_EVERY === 0) {
+      if (NET.mode === "host") hostBroadcast();
+      for (const e of sim.events) handleEvent(e);
+      for (const f of sim.eatenFx) eatFx(...f);
+      sim.adds = []; sim.rems = []; sim.events = []; sim.eatenFx = [];
+    }
+  }
+}
+function leaveGame() {
+  playing = false; clearInterval(simTimer);
+  try { NET.host?.close(); } catch {} try { NET.peer?.destroy(); } catch {}
+  NET.mode = "none"; NET.conns.clear(); NET.host = null; NET.peer = null; NET.lastIn = null;
+  view.snakes.clear(); view.orbs.clear(); demoReset();
+  history.replaceState(null, "", location.pathname + (QS.get("peer") ? "?peer=" + QS.get("peer") : ""));
+  $("hud").classList.add("hidden"); $("boostBtn").classList.add("hidden"); $("dead").classList.add("hidden"); $("conn").classList.add("hidden");
+  $("menu").classList.remove("hidden"); $("joinLinkBtn").classList.add("hidden");
+  buildMenu();
+}
+function netFail(msg) {
+  const wasPlaying = playing;
+  playing = false; clearInterval(simTimer);
+  try { NET.peer?.destroy(); } catch {}
+  NET.mode = "none";
+  $("hud").classList.add("hidden"); $("boostBtn").classList.add("hidden"); $("dead").classList.add("hidden");
+  showConn(wasPlaying ? "Disconnected" : "Couldn't connect 😕", msg, true);
+}
+function respawn() {
+  if (NET.mode === "client") NET.host?.open && NET.host.send({ t: "spawn" });
+  else { const s = sim.snakes.get(NET.you); if (s && !s.alive) spawnSnake(s); }
+  $("dead").classList.add("hidden"); deadShown = false;
+  myStats = { born: performance.now(), kills: 0 };
+}
+function sendEmote(i) {
+  if (!playing) return;
+  if (NET.mode === "client") NET.host?.open && NET.host.send({ t: "emote", e: i });
+  else { const s = sim.snakes.get(NET.you); if (s) { s.emote = i; s.emoteT = 2.5; } }
+  tone(800, .05);
+}
+
+function handleEvent(e) {
+  if (e.k === "die") {
+    explodeFx(e.x, e.y, e.c);
+    const near = me.alive && Math.hypot(e.x - me.x, e.y - me.y) < 900;
+    if (near || e.id === NET.you) { sfx.boom(); shake = 12; }
+    const victim = nameOf(e.id), killer = e.by ? nameOf(e.by) : null;
+    if (e.id === NET.you) {
+      lastDeath = { by: killer, r: e.r, sc: e.sc };
+      setTimeout(showDead, 700);
+    } else if (e.by === NET.you) {
+      myStats.kills++; sfx.kill();
+      bigText(e.king ? "👑 YOU TOOK DOWN THE KING!" : pick(["💥 KILL!", "🔥 NICE TRAP!", "😎 GOT 'EM!", "⚡ DESTROYED!"]));
+      feed(`💥 You took down <b>${esc(victim)}</b>`);
+    } else if (e.king && killer) feed(`👑 <b>${esc(killer)}</b> took down the King <b>${esc(victim)}</b>! 💎 dropped`);
+    else if (killer) feed(`<b>${esc(killer)}</b> 💥 ${esc(victim)}`);
+    else if (e.r === "wall") feed(`${esc(victim)} hit the wall 🧱`);
+  } else if (e.k === "megaspawn") { feed("💎 A <b>MEGA ORB</b> appeared! Follow the arrow!"); sfx.mega(); }
+  else if (e.k === "mega") { if (e.id === NET.you) { bigText("💎 MEGA ORB! +80"); sfx.mega(); } else feed(`💎 <b>${esc(nameOf(e.id))}</b> grabbed the Mega Orb!`); }
+  else if (e.k === "pw" && e.id === NET.you) { sfx.power(); bigText({ n: "🧲 MAGNET!", g: "👻 GHOST MODE!", t: "🔥 TURBO!" }[e.p]); }
+  else if (e.k === "join") feed(`👋 <b>${esc(nameOf(e.id))}</b> joined the game`);
+  else if (e.k === "leave") feed(`🚪 ${esc(e.name)} left`);
+}
+function showDead() {
+  if (!playing) return;
+  deadShown = true;
+  const d = lastDeath || {};
+  $("deadBy").innerHTML = d.by ? `You crashed into <b style="color:#fff">${esc(d.by)}</b>` : d.r === "wall" ? "You hit the wall 🧱" : "Boom.";
+  $("dLen").textContent = Math.round(d.sc || 0); $("dKills").textContent = myStats.kills;
+  $("dTime").textContent = Math.round((performance.now() - myStats.born) / 1000) + "s";
+  const best = store.get("serp:best", 0), sc = Math.round(d.sc || 0);
+  if (sc > best) { store.set("serp:best", sc); $("dBest").textContent = `⭐ New personal best: ${sc}!`; } else $("dBest").textContent = `Your best: ${best}`;
+  $("dead").classList.remove("hidden");
+}
+
+/* ================= effects ================= */
+function eatFx(x, y, c, eater, k) {
+  if (!me.alive || Math.hypot(x - cam.x, y - cam.y) > 1400) return;
+  particles.push({ x, y, c, eater, life: .35, r: k ? 10 : 5, fly: true });
+  if (eater === NET.you) sfx.eat();
+}
+function explodeFx(x, y, c) {
+  if (Math.hypot(x - cam.x, y - cam.y) > 1600) return;
+  for (let i = 0; i < 30; i++) { const a = rnd(0, TAU), s = rnd(100, 450); particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, c, life: rnd(.4, .9), r: rnd(3, 7) }); }
+}
+function feed(html) {
+  const d = document.createElement("div"); d.innerHTML = html; $("feed").prepend(d);
+  setTimeout(() => d.remove(), 3200);
+  while ($("feed").children.length > 4) $("feed").lastChild.remove();
+}
+function bigText(t) { const b = $("big"); b.textContent = t; b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
+
+/* ================= input ================= */
+addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.has = true; });
+cv.addEventListener("mousedown", e => { if (e.button === 0) mouse.down = true; });
+addEventListener("mouseup", () => mouse.down = false);
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") { if (e.key === "Enter" && e.target.id === "codeIn") $("joinBtn").click(); return; }
+  if (e.code === "Space") { e.preventDefault(); spaceDown = true; }
+  if (playing && /^[1-4]$/.test(e.key)) sendEmote(+e.key - 1);
+  if (e.key === "Enter" && deadShown) respawn();
+});
+addEventListener("keyup", e => { if (e.code === "Space") spaceDown = false; });
+cv.addEventListener("touchstart", e => { e.preventDefault(); const t = e.changedTouches[0]; if (!joy) joy = { id: t.identifier, ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY }; }, { passive: false });
+cv.addEventListener("touchmove", e => { e.preventDefault(); for (const t of e.changedTouches) if (joy && t.identifier === joy.id) { joy.x = t.clientX; joy.y = t.clientY; } }, { passive: false });
+const endJoy = e => { for (const t of e.changedTouches) if (joy && t.identifier === joy.id) joy = null; };
+cv.addEventListener("touchend", endJoy); cv.addEventListener("touchcancel", endJoy);
+const bb = $("boostBtn");
+bb.addEventListener("touchstart", e => { e.preventDefault(); boostTouch = true; bb.classList.add("on"); }, { passive: false });
+bb.addEventListener("touchend", e => { e.preventDefault(); boostTouch = false; bb.classList.remove("on"); }, { passive: false });
+bb.addEventListener("mousedown", () => { boostTouch = true; }); bb.addEventListener("mouseup", () => { boostTouch = false; });
+
+function readInput() {
+  if (joy) { const dx = joy.x - joy.ox, dy = joy.y - joy.oy; if (Math.hypot(dx, dy) > 10) input.a = Math.atan2(dy, dx); }
+  else if (mouse.has && !isTouch && me.alive) { const hx = (me.x - cam.x) * cam.z + innerWidth / 2, hy = (me.y - cam.y) * cam.z + innerHeight / 2; input.a = Math.atan2(mouse.y - hy, mouse.x - hx); }
+  input.boost = mouse.down || spaceDown || boostTouch;
+  if (NET.mode === "client" && NET.host?.open) {
+    const now = performance.now(), L = NET.lastIn;
+    if (!L || now - L.t > 200 || Math.abs(wrapAng(L.a - input.a)) > .03 || L.b !== input.boost) {
+      if (!L || now - L.t > 45) { NET.host.send({ t: "in", a: Math.round(input.a * 1000) / 1000, b: input.boost ? 1 : 0 }); NET.lastIn = { t: now, a: input.a, b: input.boost }; }
+    }
+  }
+}
+
+/* ================= render ================= */
+let W = 0, H = 0, dpr = 1;
+function resize() { dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; }
+addEventListener("resize", resize); resize();
+const sprites = {};
+function orbSprite(c) {
+  if (sprites[c]) return sprites[c];
+  if (/^#[0-9a-f]{3}$/i.test(c)) return sprites[c] = orbSprite("#" + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]);
+  const s = document.createElement("canvas"); s.width = s.height = 64; const g = s.getContext("2d");
+  const gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, "#fff"); gr.addColorStop(.25, c); gr.addColorStop(.5, c + "88"); gr.addColorStop(1, c + "00");
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return sprites[c] = s;
+}
+function shadeHex(hex, k) { const n = parseInt(hex.slice(1), 16), f = c => clamp(Math.round(c * k), 0, 255); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; }
+
+function renderList() {
+  const out = [];
+  if (NET.mode === "client") {
+    const now = performance.now(), base = now + (view.offset ?? 0);
+    for (const v of view.snakes.values()) {
+      if (!v.alive || !v.samples.length) continue;
+      interpSnake(v, v.id === NET.you ? base - 40 : base - 110);
+      const r = view.roster.get(v.id);
+      out.push({ id: v.id, body: v.body, r: v.r, x: v.x, y: v.y, ang: v.ang, skin: r ? r[2] : SKINS[0], name: r ? r[1] : "?", flags: v.flags, emote: v.emote, score: v.score, kills: v.kills });
+    }
+  } else for (const s of sim.snakes.values()) if (s.alive)
+    out.push({ id: s.id, body: s.body, r: s.r, x: s.x, y: s.y, ang: s.ang, skin: s.skin, name: s.name, emote: s.emote, score: s.score, kills: s.kills,
+      flags: (s.boosting ? 1 : 0) | (s.pw.g > 0 ? 2 : 0) | (s.pw.n > 0 ? 4 : 0) | (s.pw.t > 0 ? 8 : 0) });
+  return out;
+}
+function orbIter() { return NET.mode === "client" ? view.orbs.values() : sim.orbs.values(); }
+
+function drawSnake(g, s, isKing, t) {
+  const b = s.body; if (b.length < 2) return;
+  const ghost = s.flags & 2, boosting = s.flags & 1;
+  g.save();
+  if (ghost) g.globalAlpha = .4 + .15 * Math.sin(t * 10);
+  g.lineCap = "round"; g.lineJoin = "round";
+  g.beginPath(); g.moveTo(b[0].x, b[0].y); for (let i = 1; i < b.length; i++) g.lineTo(b[i].x, b[i].y);
+  if (boosting) { g.shadowColor = s.skin[0]; g.shadowBlur = 25; }
+  g.strokeStyle = shadeHex(s.skin[0], .45); g.lineWidth = s.r * 2 + 4; g.stroke();
+  g.shadowBlur = 0;
+  g.strokeStyle = s.skin[0]; g.lineWidth = s.r * 2; g.stroke();
+  g.setLineDash([SEG * 3, SEG * 3]); g.lineCap = "butt"; g.strokeStyle = s.skin[1]; g.lineWidth = s.r * 1.6; g.stroke(); g.setLineDash([]);
+  g.lineCap = "round"; g.strokeStyle = "rgba(255,255,255,.18)"; g.lineWidth = s.r * .45; g.stroke();
+  // head
+  const hx = b[0].x, hy = b[0].y, ca = Math.cos(s.ang), sa = Math.sin(s.ang);
+  g.fillStyle = s.skin[0]; g.beginPath(); g.arc(hx, hy, s.r * 1.08, 0, TAU); g.fill();
+  for (const side of [-1, 1]) {
+    const ex = hx + ca * s.r * .35 - sa * side * s.r * .5, ey = hy + sa * s.r * .35 + ca * side * s.r * .5;
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(ex, ey, s.r * .38, 0, TAU); g.fill();
+    g.fillStyle = "#05060d"; g.beginPath(); g.arc(ex + ca * s.r * .14, ey + sa * s.r * .14, s.r * .2, 0, TAU); g.fill();
+  }
+  g.restore();
+  // labels
+  const fs = clamp(12 / cam.z, 12, 34);
+  g.font = `700 ${fs}px "Exo 2", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.lineWidth = fs * .25; g.strokeStyle = "rgba(0,0,0,.7)"; g.fillStyle = "#fff";
+  const ly = hy - s.r - fs * 1.1;
+  g.strokeText(s.name, hx, ly); g.fillText(s.name, hx, ly);
+  if (isKing) { g.font = `${fs * 1.6}px serif`; g.fillText("👑", hx, ly - fs * 1.3); }
+  if (s.flags & 4) { g.strokeStyle = "rgba(0,245,212,.18)"; g.lineWidth = 3; g.beginPath(); g.arc(hx, hy, s.r + 150, 0, TAU); g.stroke(); }
+  if (s.emote >= 0) {
+    const by = ly - fs * (isKing ? 3.4 : 2.2), sz = fs * 1.9;
+    g.fillStyle = "rgba(255,255,255,.92)"; g.beginPath(); g.arc(hx, by, sz * .72, 0, TAU); g.fill();
+    g.font = `${sz}px serif`; g.fillText(EMOTES[s.emote], hx, by + 1);
+  }
+}
+
+function draw(t, dt) {
+  const g = ctx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = "#05060d"; g.fillRect(0, 0, W, H);
+  const list = renderList();
+  const mine = list.find(s => s.id === NET.you);
+  if (mine) { me = { alive: true, x: mine.x, y: mine.y, r: mine.r, score: mine.score, kills: mine.kills }; }
+  else if (playing) me.alive = false;
+  // camera
+  if (me.alive) { cam.x += (me.x - cam.x) * .2; cam.y += (me.y - cam.y) * .2; }
+  else if (!playing) { const lead = list.reduce((a, s) => !a || s.score > a.score ? s : a, null); if (lead) { cam.x += (lead.x - cam.x) * .03; cam.y += (lead.y - cam.y) * .03; } }
+  const zt = playing ? Math.min(W, H) / 1000 * clamp(1.5 / Math.pow((me.r || 9) / 9, .6), .45, 1.5) * (isTouch ? 1.1 : 1) : Math.min(W, H) / 1000;
+  cam.z += (zt - cam.z) * .04;
+  shake = Math.max(0, shake - dt * 40);
+  const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) : 0;
+  g.save();
+  g.translate(W / 2 + sx, H / 2 + sy); g.scale(cam.z, cam.z); g.translate(-cam.x, -cam.y);
+  const vw = W / 2 / cam.z + 40, vh = H / 2 / cam.z + 40, L = cam.x - vw, R = cam.x + vw, T = cam.y - vh, B = cam.y + vh;
+  // outside world
+  g.fillStyle = "#14030a"; g.fillRect(L, T, R - L, B - T);
+  g.fillStyle = "#070914"; g.fillRect(0, 0, WORLD, WORLD);
+  // hex-ish grid
+  g.strokeStyle = "rgba(0,245,212,.06)"; g.lineWidth = 1.5; g.beginPath();
+  const step = 90;
+  for (let x = Math.max(0, Math.floor(L / step) * step); x <= Math.min(WORLD, R); x += step) { g.moveTo(x, Math.max(0, T)); g.lineTo(x, Math.min(WORLD, B)); }
+  for (let y = Math.max(0, Math.floor(T / step) * step); y <= Math.min(WORLD, B); y += step) { g.moveTo(Math.max(0, L), y); g.lineTo(Math.min(WORLD, R), y); }
+  g.stroke();
+  g.shadowColor = "#ff3366"; g.shadowBlur = 30; g.strokeStyle = "#ff3366"; g.lineWidth = 8; g.strokeRect(0, 0, WORLD, WORLD); g.shadowBlur = 0;
+  // orbs
+  let mega = null;
+  g.textAlign = "center"; g.textBaseline = "middle";
+  for (const o of orbIter()) {
+    if (o.k === "m") mega = o;
+    if (o.x < L || o.x > R || o.y < T || o.y > B) continue;
+    if (o.k === "m") {
+      const s = 30 + Math.sin(t * 5) * 4;
+      g.drawImage(orbSprite("#fee440"), o.x - s * 2, o.y - s * 2, s * 4, s * 4);
+      g.font = "30px serif"; g.fillText("💎", o.x, o.y);
+    } else if (o.k) {
+      g.drawImage(orbSprite("#ffffff"), o.x - 26, o.y - 26, 52, 52);
+      g.strokeStyle = "rgba(255,255,255,.6)"; g.lineWidth = 2; g.beginPath(); g.arc(o.x, o.y, 17, t * 3, t * 3 + 4.5); g.stroke();
+      g.font = "18px serif"; g.fillText(POW[o.k], o.x, o.y + 1);
+    } else {
+      const r = orbR(o) * (1 + .15 * Math.sin(t * 4 + o.x));
+      g.drawImage(orbSprite(o.c), o.x - r * 2.2, o.y - r * 2.2, r * 4.4, r * 4.4);
+    }
+  }
+  // particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.life -= dt;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    if (p.fly) { const e = list.find(s => s.id === p.eater); if (e) { p.x += (e.x - p.x) * .35; p.y += (e.y - p.y) * .35; } }
+    else { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .93; p.vy *= .93; }
+    g.globalAlpha = clamp(p.life * 2.5, 0, 1);
+    g.drawImage(orbSprite(p.c), p.x - p.r * 2, p.y - p.r * 2, p.r * 4, p.r * 4);
+  }
+  g.globalAlpha = 1;
+  // snakes: biggest last so it's on top
+  let kingId = 0, kingSc = -1; for (const s of list) if (s.score > kingSc) { kingSc = s.score; kingId = s.id; }
+  list.sort((a, b) => a.score - b.score);
+  for (const s of list) drawSnake(g, s, s.id === kingId && list.length > 1, t);
+  g.restore();
+  if (!playing) return;
+  // mega arrow
+  if (mega && me.alive) {
+    const sxm = (mega.x - cam.x) * cam.z + W / 2, sym = (mega.y - cam.y) * cam.z + H / 2;
+    if (sxm < 0 || sxm > W || sym < 0 || sym > H) {
+      const a = Math.atan2(sym - H / 2, sxm - W / 2), m = 46;
+      const ax = clamp(W / 2 + Math.cos(a) * W, m, W - m), ay = clamp(H / 2 + Math.sin(a) * H, m + 40, H - m - 60);
+      g.save(); g.translate(ax, ay); g.rotate(a);
+      g.fillStyle = "#fee440"; g.shadowColor = "#fee440"; g.shadowBlur = 15;
+      g.beginPath(); g.moveTo(18, 0); g.lineTo(-10, -12); g.lineTo(-10, 12); g.closePath(); g.fill(); g.restore();
+      g.font = "20px serif"; g.textAlign = "center"; g.fillText("💎", ax - Math.cos(a) * 28, ay - Math.sin(a) * 28);
+    }
+  }
+  // joystick
+  if (joy) {
+    g.globalAlpha = .25; g.fillStyle = "#00f5d4"; g.beginPath(); g.arc(joy.ox, joy.oy, 52, 0, TAU); g.fill();
+    const dx = joy.x - joy.ox, dy = joy.y - joy.oy, l = Math.min(46, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+    g.globalAlpha = .6; g.beginPath(); g.arc(joy.ox + Math.cos(a) * l, joy.oy + Math.sin(a) * l, 24, 0, TAU); g.fill(); g.globalAlpha = 1;
+  }
+  // minimap
+  const mm = Math.min(120, W * .26), mx = 10, my = 86;
+  g.fillStyle = "rgba(5,6,13,.7)"; g.strokeStyle = "rgba(255,51,102,.5)"; g.lineWidth = 1.5;
+  g.fillRect(mx, my, mm, mm); g.strokeRect(mx, my, mm, mm);
+  for (const s of list) { g.fillStyle = s.id === NET.you ? "#fff" : s.skin[0]; const r = s.id === NET.you ? 3.5 : clamp(s.r / 8, 1.5, 3.5); g.beginPath(); g.arc(mx + s.x / WORLD * mm, my + s.y / WORLD * mm, r, 0, TAU); g.fill(); }
+  if (mega) { g.font = "11px serif"; g.textAlign = "center"; g.fillText("💎", mx + mega.x / WORLD * mm, my + mega.y / WORLD * mm); }
+  hud(list, kingId);
+}
+
+let hudT = 0;
+function hud(list, kingId) {
+  const now = performance.now(); if (now - hudT < 250) return; hudT = now;
+  if (me.alive) { $("len").textContent = Math.round(me.score); $("kills").textContent = me.kills; }
+  const sorted = [...list].sort((a, b) => b.score - a.score);
+  const pos = sorted.findIndex(s => s.id === NET.you);
+  let html = "<h4>🏆 Leaderboard</h4>";
+  sorted.slice(0, isTouch || innerHeight < 520 ? 5 : 8).forEach((s, i) => html += `<div class="${s.id === NET.you ? "me" : ""}">${i === 0 ? "👑" : (i + 1) + "."} <span class="n">${esc(s.name)}</span> <span style="opacity:.6">${Math.round(s.score)}</span></div>`);
+  if (pos >= (isTouch || innerHeight < 520 ? 5 : 8)) html += `<div class="me">${pos + 1}. <span class="n">${esc(sorted[pos].name)}</span> <span style="opacity:.6">${Math.round(sorted[pos].score)}</span></div>`;
+  $("lb").innerHTML = html;
+  if (NET.mode === "host" || NET.mode === "client") {
+    const humans = NET.mode === "host" ? NET.conns.size + 1 : [...view.roster.values()].filter(r => !r[3]).length;
+    $("room").querySelector("#onl") && ($("room").querySelector("#onl").textContent = humans);
+  }
+}
+function showInvite(isHost) {
+  const r = $("room");
+  if (NET.mode === "solo") { r.innerHTML = `🤖 SOLO vs BOTS`; return; }
+  r.innerHTML = `ROOM <b>${NET.code}</b> · <span id="onl">1</span> 👤 <button id="copyBtn">🔗 Invite</button>`;
+  $("copyBtn").onclick = copyInvite;
+  if (isHost) { bigText("ROOM " + NET.code); feed(`🎉 Room created! Click <b>🔗 Invite</b> and send the link to your friends.`); }
+  else feed(`✅ Joined room <b>${NET.code}</b>`);
+}
+function inviteLink() { return location.origin + location.pathname + "?room=" + NET.code + (QS.get("peer") ? "&peer=" + QS.get("peer") : ""); }
+function copyInvite() {
+  const link = inviteLink();
+  if (navigator.share && isTouch) { navigator.share({ title: "Neon Serpents", text: `Join my Neon Serpents room ${NET.code}! 🐍`, url: link }).catch(() => {}); return; }
+  navigator.clipboard?.writeText(link).then(() => feed("📋 Invite link copied! Send it to your friends."), () => feed(link));
+}
+
+/* ================= menus ================= */
+function buildMenu() {
+  $("name").value = store.get("serp:name", "");
+  const cur = store.get("serp:skin", 0);
+  $("skins").innerHTML = SKINS.map((s, i) => `<button class="skin ${i === cur ? "on" : ""}" data-s="${i}" style="background:linear-gradient(135deg, ${s[0]} 50%, ${s[1]} 50%)" aria-label="skin"></button>`).join("");
+  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { store.set("serp:skin", +b.dataset.s); tone(700, .05); buildMenu(); });
+  const best = store.get("serp:best", 0); $("bestTxt").textContent = best ? `⭐ Your best length: ${best}` : "";
+  const room = (QS.get("room") || "").toUpperCase();
+  if (room && NET.mode === "none" && !$("joinLinkBtn").dataset.used) {
+    $("joinLinkBtn").classList.remove("hidden"); $("joinLinkBtn").textContent = `🎮 JOIN ROOM ${room}`; $("codeIn").value = room;
+  }
+  $("menuErr").textContent = "";
+}
+function menuError(m) { $("menuErr").textContent = m; tone(150, .2, "sawtooth"); }
+function showConn(title, body, failed) {
+  $("menu").classList.add("hidden"); $("conn").classList.remove("hidden");
+  $("connTitle").textContent = title; $("connBody").innerHTML = body;
+  $("connSpin").classList.toggle("hidden", !!failed);
+}
+$("soloBtn").onclick = () => { tone(500, .1); startSolo(); };
+$("hostBtn").onclick = () => { tone(500, .1); startHost(); };
+$("joinBtn").onclick = () => { tone(500, .1); joinRoom($("codeIn").value); };
+$("joinLinkBtn").onclick = () => { $("joinLinkBtn").dataset.used = 1; tone(500, .1); joinRoom(QS.get("room") || ""); };
+$("connCancel").onclick = leaveGame;
+$("respawnBtn").onclick = respawn;
+$("quitBtn").onclick = leaveGame;
+$("shareBtn").onclick = () => {
+  const d = lastDeath || {};
+  const txt = `🐍 Neon Serpents: I grew to length ${Math.round(d.sc || 0)} with ${myStats.kills} kills! Play with me: ${NET.code && NET.mode !== "solo" ? inviteLink() : location.origin + location.pathname}`;
+  navigator.clipboard?.writeText(txt).then(() => $("shareBtn").textContent = "Copied! ✅", () => {});
+};
+$("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+$("soundBtn").onclick = () => { soundOn = !soundOn; store.set("serp:sound", soundOn); $("soundBtn").textContent = soundOn ? "🔊" : "🔇"; };
+$("emotes").innerHTML = EMOTES.map((e, i) => `<button data-e="${i}">${e}${isTouch ? "" : `<small>${i + 1}</small>`}</button>`).join("");
+document.querySelectorAll("[data-e]").forEach(b => b.onclick = () => sendEmote(+b.dataset.e));
+buildMenu();
+
+/* ================= menu background demo + main loop ================= */
+function demoReset() { simReset(true, 10); for (let i = 0; i < 10; i++) addSnake(pick(BOT_NAMES), pick(SKINS), true, null); }
+demoReset();
+setInterval(() => { if (NET.mode === "none") { for (let i = 0; i < 2; i++) simTick(TICK); sim.adds = []; sim.rems = []; sim.events = []; sim.eatenFx = []; } }, 1000 / 30);
+
+let lastF = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - lastF) / 1000); lastF = now;
+  if (playing) readInput();
+  draw(now / 1000, dt);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
