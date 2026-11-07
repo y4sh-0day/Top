@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Slime Party</title>
+<meta name="description" content="Slime Party: eat, grow, and swallow other slimes in a jelly arena. Play in your browser on Mac or phone.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #1b1433; --card: rgba(30, 22, 58, .92); --text: #fff; --muted: #b9add9; --accent: #4ade80; --pink: #f472b6; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: Fredoka, ui-rounded, system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 14px; }
+  .hidden { display: none !important; }
+
+  /* overlays */
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
+    background: radial-gradient(circle at 50% 30%, rgba(74,222,128,.15), transparent 60%), rgba(15,10,30,.55); overflow: auto; }
+  .card { background: var(--card); border: 2px solid rgba(255,255,255,.08); border-radius: 26px; padding: 26px; width: 100%; max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); text-align: center; margin: auto; }
+  h1 { font-size: clamp(40px, 11vw, 60px); margin: 0; line-height: 1; letter-spacing: 1px;
+    background: linear-gradient(90deg, #4ade80, #22d3ee, #f472b6, #facc15); -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: wob 2.4s ease-in-out infinite; display: inline-block; }
+  @keyframes wob { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.05, .95); } }
+  .tag { color: var(--muted); margin: 8px 0 18px; }
+  .preview { width: 120px; height: 120px; margin: 0 auto 8px; display: block; }
+  input#name { width: 100%; font: inherit; font-size: 20px; text-align: center; padding: 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.15);
+    background: rgba(0,0,0,.3); color: #fff; outline: none; user-select: text; -webkit-user-select: text; }
+  input#name:focus { border-color: var(--accent); }
+  .label { color: var(--muted); font-size: 14px; margin: 14px 0 6px; text-align: left; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .sw { width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent; }
+  .sw.on { border-color: #fff; transform: scale(1.12); }
+  .hat { width: 44px; height: 44px; font-size: 24px; background: rgba(255,255,255,.07); border: 2px solid transparent; }
+  .hat.on { border-color: #fff; background: rgba(255,255,255,.16); }
+  .play { width: 100%; margin-top: 20px; padding: 16px; font-size: 24px; font-weight: 700; color: #10331d;
+    background: linear-gradient(180deg, #6ef59b, #22c55e); box-shadow: 0 6px 0 #15803d; transition: transform .1s; }
+  .play:active { transform: translateY(4px); box-shadow: 0 2px 0 #15803d; }
+  .ghost { background: rgba(255,255,255,.1); color: #fff; padding: 12px 18px; margin-top: 10px; }
+  .how { color: var(--muted); font-size: 14px; margin-top: 16px; line-height: 1.5; }
+  .how b { color: #fff; }
+  .best { color: #facc15; margin-top: 8px; font-size: 15px; }
+  nav.games { margin-top: 16px; font-size: 13px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  nav.games a { color: var(--muted); }
+
+  /* HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .pill { position: absolute; background: rgba(15,10,30,.6); border-radius: 14px; padding: 6px 12px; font-size: 16px; }
+  #timer { top: 12px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700; }
+  #timer.low { color: #f87171; animation: wob .5s infinite; }
+  #mass { top: 12px; left: 12px; }
+  #lb { top: 12px; right: 12px; min-width: 150px; font-size: 14px; line-height: 1.55; }
+  #lb .me { color: var(--accent); font-weight: 700; }
+  #lb h4 { margin: 0 0 2px; font-size: 13px; color: var(--muted); }
+  #feed { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 16px; width: 90%; }
+  #feed div { animation: fade 2.6s forwards; text-shadow: 0 2px 6px #000; }
+  @keyframes fade { 0%,70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+  #big { position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%); font-size: clamp(28px, 7vw, 54px); font-weight: 700;
+    text-shadow: 0 4px 20px #000; white-space: nowrap; }
+  #big.pop { animation: pop 1.6s forwards; }
+  @keyframes pop { 0% { transform: translate(-50%,-50%) scale(.3); opacity: 0; } 15% { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
+    25% { transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-70%) scale(1); } }
+  #boostBtn { position: fixed; right: 22px; bottom: 26px; width: 84px; height: 84px; border-radius: 50%; z-index: 6; font-size: 15px; font-weight: 700;
+    background: radial-gradient(circle at 35% 30%, #fde68a, #f59e0b); color: #4a2a00; box-shadow: 0 6px 0 #b45309; pointer-events: auto; }
+  #boostBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b45309; }
+  .hint-desk { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.55); font-size: 13px; white-space: nowrap; }
+  #soundBtn { position: absolute; top: 56px; left: 12px; pointer-events: auto; background: rgba(15,10,30,.6); color: #fff; padding: 6px 10px; font-size: 16px; }
+
+  /* results */
+  .place { font-size: 64px; font-weight: 700; margin: 4px 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+  .stats div { background: rgba(255,255,255,.07); border-radius: 14px; padding: 10px 4px; }
+  .stats small { display: block; color: var(--muted); font-size: 12px; }
+  .stats b { font-size: 22px; }
+  .podium { text-align: left; background: rgba(0,0,0,.25); border-radius: 14px; padding: 10px 14px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="pill" id="timer">3:00</div>
+  <div class="pill" id="mass">Size 25</div>
+  <div class="pill" id="lb"></div>
+  <div id="feed"></div>
+  <div id="big"></div>
+  <button id="soundBtn">🔊</button>
+  <div class="hint-desk" id="deskHint">Move with your mouse · <b>Space</b> or <b>click</b> to boost</div>
+</div>
+<button id="boostBtn" class="hidden">BOOST</button>
+
+<!-- Menu -->
+<div class="screen" id="menu">
+  <div class="card">
+    <h1>Slime Party</h1>
+    <p class="tag">Eat. Grow. Swallow your friends. 🟢</p>
+    <canvas class="preview" id="preview" width="240" height="240"></canvas>
+    <input id="name" maxlength="14" placeholder="Your slime name" autocomplete="off">
+    <div class="label">Colour</div>
+    <div class="swatches" id="colors"></div>
+    <div class="label">Hat</div>
+    <div class="swatches" id="hats"></div>
+    <button class="play" id="playBtn">PLAY ▶</button>
+    <div class="best" id="bestTxt"></div>
+    <div class="how">
+      <b>Eat</b> the dots to grow. <b>Swallow</b> slimes that are smaller than you, and run from bigger ones!<br>
+      Bigger means slower. <b>Boost</b> costs a little size.<br>
+      Power-ups: ⚡ speed · 🧲 magnet · 🛡 shield · 🍄 mega growth<br>
+      The biggest slime after 3 minutes wins 👑
+    </div>
+    <nav class="games"><a href="./">CmdRush</a><a href="typing.html">TypeFast</a><a href="0day.html">0DAY</a><a href="https://github.com/y4sh-0day/Top">⭐ GitHub</a></nav>
+  </div>
+</div>
+
+<!-- Game over / results -->
+<div class="screen hidden" id="over">
+  <div class="card">
+    <div id="overTitle" style="font-size:26px;font-weight:700"></div>
+    <div class="place" id="overPlace"></div>
+    <div class="stats">
+      <div><small>Biggest size</small><b id="sMax">0</b></div>
+      <div><small>Slimes eaten</small><b id="sKills">0</b></div>
+      <div><small>Dots eaten</small><b id="sDots">0</b></div>
+    </div>
+    <div class="podium" id="podium"></div>
+    <div class="best" id="overBest"></div>
+    <button class="play" id="againBtn">PLAY AGAIN ▶</button>
+    <button class="ghost" id="menuBtn">Change slime</button>
+    <button class="ghost" id="shareBtn">Share score</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d");
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.random() * a.length | 0];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const isTouch = matchMedia("(pointer: coarse)").matches;
+
+/* ---------- config ---------- */
+const WORLD = 3200, FOOD_N = 700, BOT_N = 22, ROUND = 180, POWER_N = 14;
+const COLORS = ["#4ade80", "#f472b6", "#60a5fa", "#facc15", "#fb923c", "#a78bfa", "#22d3ee", "#f87171"];
+const HATS = ["", "👑", "🎩", "🧢", "🤠", "🎀", "🌸", "🎓"];
+const BOT_NAMES = ["Jellybean", "Blobert", "Sir Wobble", "Goo Fighter", "Squishy", "Mochi", "Gloopy", "Bubbles", "Captain Goo",
+  "Pudding", "Slimy Joe", "Wanda Wobble", "Jiggles", "Dr. Splat", "Marshmallow", "Lil Gloop", "Noodle", "Boba", "Gummy",
+  "Sludge Lord", "Puddle", "Wiggles", "Slurp", "Gelato", "Bloop"];
+const POWERS = { speed: "⚡", magnet: "🧲", shield: "🛡", mega: "🍄" };
+
+/* ---------- sound ---------- */
+let actx, soundOn = store.get("slime:sound", true);
+function tone(f, d = .08, type = "sine", v = .06, delay = 0, slide = 0) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + .02);
+  } catch {}
+}
+let lastBlip = 0;
+const sfx = {
+  dot() { const n = performance.now(); if (n - lastBlip < 45) return; lastBlip = n; tone(rnd(600, 900), .05, "sine", .025); },
+  gulp() { tone(300, .25, "sine", .12, 0, .35); tone(180, .2, "triangle", .08, .08, .5); },
+  boost() { tone(200, .2, "sawtooth", .03, 0, 3); },
+  power() { [660, 880, 1320].forEach((f, i) => tone(f, .1, "square", .03, i * .06)); },
+  dead() { tone(400, .6, "sawtooth", .06, 0, .2); },
+  win() { [523, 659, 784, 1046].forEach((f, i) => tone(f, .18, "square", .05, i * .12)); }
+};
+
+/* ---------- state ---------- */
+let W = 0, H = 0, dpr = 1;
+let slimes = [], foods = [], powers = [], parts = [];
+let me = null, running = false, timeLeft = ROUND, cam = { x: 0, y: 0, z: 1 }, shake = 0;
+let myColor = store.get("slime:color", COLORS[0]), myHat = store.get("slime:hat", "👑");
+let input = { x: 0, y: 0, mag: 0 }, mouse = { x: 0, y: 0, has: false }, joy = null;
+let stats = { max: 0, kills: 0, dots: 0 }, wasFirst = false;
+
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+}
+addEventListener("resize", resize); resize();
+
+const radius = m => 4 * Math.sqrt(m);
+const speedOf = s => 260 * Math.pow(20 / s.r, 0.45) * (s.boostT > 0 ? 2.3 : 1) * (s.pw.speed > 0 ? 1.6 : 1);
+
+function makeSlime(name, color, hat, mass, isBot) {
+  return { name, color, hat, mass, r: radius(mass), x: rnd(200, WORLD - 200), y: rnd(200, WORLD - 200),
+    vx: 0, vy: 0, dx: 1, dy: 0, bot: isBot, alive: true, boostT: 0, boostCd: 0, think: 0, tx: 0, ty: 0,
+    pw: { speed: 0, magnet: 0, shield: 0 }, wob: Math.random() * 10, kills: 0, respawn: 0 };
+}
+function spawnFood(x, y, big) {
+  foods.push({ x: x ?? rnd(20, WORLD - 20), y: y ?? rnd(20, WORLD - 20), r: big ? rnd(7, 9) : rnd(4.5, 6.5), m: big ? 3 : 1,
+    c: pick(COLORS), ph: Math.random() * 6 });
+}
+function spawnPower() { powers.push({ x: rnd(150, WORLD - 150), y: rnd(150, WORLD - 150), type: pick(Object.keys(POWERS)), ph: Math.random() * 6 }); }
+
+function newRound() {
+  slimes = []; foods = []; powers = []; parts = [];
+  const name = ($("name").value.trim() || "You").slice(0, 14);
+  store.set("slime:name", name);
+  me = makeSlime(name, myColor, myHat, 25, false);
+  me.pw.shield = 4; // spawn protection
+  slimes.push(me);
+  const names = [...BOT_NAMES].sort(() => Math.random() - .5);
+  for (let i = 0; i < BOT_N; i++) {
+    const big = i < 3 ? rnd(110, 220) : rnd(12, 48);
+    const b = makeSlime(names[i], pick(COLORS), Math.random() < .5 ? pick(HATS.slice(1)) : "", big, true);
+    for (let k = 0; k < 20 && Math.hypot(b.x - me.x, b.y - me.y) < (big > 60 ? 1100 : 500); k++) { b.x = rnd(200, WORLD - 200); b.y = rnd(200, WORLD - 200); }
+    slimes.push(b);
+  }
+  for (let i = 0; i < FOOD_N; i++) spawnFood();
+  for (let i = 0; i < POWER_N; i++) spawnPower();
+  timeLeft = ROUND; stats = { max: 25, kills: 0, dots: 0 }; wasFirst = false;
+  cam.x = me.x; cam.y = me.y; cam.z = 1.2;
+  input = { x: 1, y: 0, mag: 0 };
+  $("menu").classList.add("hidden"); $("over").classList.add("hidden"); $("hud").classList.remove("hidden");
+  $("boostBtn").classList.toggle("hidden", !isTouch); $("deskHint").classList.toggle("hidden", isTouch);
+  $("feed").innerHTML = "";
+  running = true;
+  bigText("GO! 🟢");
+}
+
+/* ---------- input ---------- */
+addEventListener("mousemove", e => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.has = true; });
+cv.addEventListener("mousedown", () => running && boost(me));
+addEventListener("keydown", e => {
+  if (e.code === "Space" && running) { e.preventDefault(); boost(me); }
+  if (e.key === "Enter" && !running) (!$("over").classList.contains("hidden") ? $("againBtn") : $("playBtn")).click();
+});
+cv.addEventListener("touchstart", e => { e.preventDefault(); const t = e.changedTouches[0]; joy = { id: t.identifier, ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY }; }, { passive: false });
+cv.addEventListener("touchmove", e => { e.preventDefault(); for (const t of e.changedTouches) if (joy && t.identifier === joy.id) { joy.x = t.clientX; joy.y = t.clientY; } }, { passive: false });
+cv.addEventListener("touchend", e => { for (const t of e.changedTouches) if (joy && t.identifier === joy.id) joy = null; });
+$("boostBtn").addEventListener("touchstart", e => { e.preventDefault(); running && boost(me); }, { passive: false });
+$("boostBtn").addEventListener("click", () => running && boost(me));
+
+function readInput() {
+  if (joy) {
+    const dx = joy.x - joy.ox, dy = joy.y - joy.oy, l = Math.hypot(dx, dy);
+    if (l > 8) { input.x = dx / l; input.y = dy / l; input.mag = Math.min(1, l / 45); }
+  } else if (mouse.has && !isTouch) {
+    const dx = mouse.x - W / 2, dy = mouse.y - H / 2, l = Math.hypot(dx, dy);
+    if (l > 4) { input.x = dx / l; input.y = dy / l; }
+    input.mag = Math.min(1, l / 90);
+  } else if (isTouch) input.mag = Math.max(0, input.mag - .02);
+}
+
+function boost(s) {
+  if (!s.alive || s.boostCd > 0 || s.mass < 30) return;
+  const lost = s.mass * .08; s.mass -= lost;
+  s.boostT = .4; s.boostCd = .9;
+  for (let i = 0; i < 3; i++) spawnFood(s.x - s.dx * (s.r + 14 + i * 12) + rnd(-8, 8), s.y - s.dy * (s.r + 14 + i * 12) + rnd(-8, 8), true);
+  if (s === me) sfx.boost();
+}
+
+/* ---------- bots ---------- */
+function botThink(b) {
+  b.think = rnd(.18, .4);
+  let threat = null, td = Infinity, prey = null, pd = Infinity;
+  for (const o of slimes) {
+    if (o === b || !o.alive) continue;
+    const d = Math.hypot(o.x - b.x, o.y - b.y) - o.r - b.r;
+    if (o.r > b.r * 1.15 && !b.pw.shield && d < 220 + o.r && d < td) { threat = o; td = d; }
+    if (b.r > o.r * 1.15 && !o.pw.shield && d < 300 && d < pd) { prey = o; pd = d; }
+  }
+  let tx, ty;
+  if (threat && (!prey || td < pd * .8)) {
+    tx = b.x - (threat.x - b.x); ty = b.y - (threat.y - b.y);
+    if (td < 60 && Math.random() < .35) boost(b);
+  } else if (prey) {
+    tx = prey.x + prey.vx * .3; ty = prey.y + prey.vy * .3;
+    if (pd < 90 && Math.random() < .3) boost(b);
+  } else {
+    let best = null, bd = Infinity;
+    for (const p of powers) { const d = Math.hypot(p.x - b.x, p.y - b.y); if (d < 320 && d < bd) { best = p; bd = d; } }
+    if (!best) for (const f of foods) { const d = (f.x - b.x) ** 2 + (f.y - b.y) ** 2; if (d < bd) { best = f; bd = d; } }
+    tx = best ? best.x : WORLD / 2; ty = best ? best.y : WORLD / 2;
+  }
+  // stay away from walls
+  const m = 120 + b.r;
+  if (b.x < m) tx = Math.max(tx, b.x + 200); if (b.x > WORLD - m) tx = Math.min(tx, b.x - 200);
+  if (b.y < m) ty = Math.max(ty, b.y + 200); if (b.y > WORLD - m) ty = Math.min(ty, b.y - 200);
+  const dx = tx - b.x, dy = ty - b.y, l = Math.hypot(dx, dy) || 1;
+  b.tx = dx / l; b.ty = dy / l;
+}
+
+/* ---------- update ---------- */
+function update(dt) {
+  readInput();
+  timeLeft -= dt;
+  for (const s of slimes) {
+    if (!s.alive) {
+      if (s.bot && (s.respawn -= dt) <= 0) {
+        Object.assign(s, makeSlime(s.name, s.color, s.hat, rnd(14, 40), true));
+        if (me.alive && Math.hypot(s.x - me.x, s.y - me.y) < 450) { s.x = WORLD - s.x; s.y = WORLD - s.y; }
+      }
+      continue;
+    }
+    let ix, iy, mag;
+    if (s.bot) { if ((s.think -= dt) <= 0) botThink(s); ix = s.tx; iy = s.ty; mag = 1; }
+    else { ix = input.x; iy = input.y; mag = input.mag; }
+    // smooth turning
+    s.dx += (ix - s.dx) * Math.min(1, dt * 8); s.dy += (iy - s.dy) * Math.min(1, dt * 8);
+    const dl = Math.hypot(s.dx, s.dy) || 1; s.dx /= dl; s.dy /= dl;
+    const sp = speedOf(s) * mag;
+    s.vx = s.dx * sp; s.vy = s.dy * sp;
+    s.x = clamp(s.x + s.vx * dt, s.r * .6, WORLD - s.r * .6);
+    s.y = clamp(s.y + s.vy * dt, s.r * .6, WORLD - s.r * .6);
+    s.boostT -= dt; s.boostCd -= dt;
+    for (const k in s.pw) s.pw[k] = Math.max(0, s.pw[k] - dt);
+    if (s.mass > 40) s.mass -= s.mass * .0025 * dt; // big slimes slowly shrink
+    s.r += (radius(s.mass) - s.r) * Math.min(1, dt * 10);
+    s.wob += dt * (3 + sp / 120);
+    if (s.boostT > 0 && Math.random() < .6) parts.push({ x: s.x - s.dx * s.r, y: s.y - s.dy * s.r, vx: rnd(-40, 40), vy: rnd(-40, 40), r: rnd(3, 6), c: s.color, life: .5 });
+  }
+  // food
+  for (const s of slimes) {
+    if (!s.alive) continue;
+    const reach = s.r, mag = s.pw.magnet > 0 ? s.r + 170 : 0;
+    for (let i = foods.length - 1; i >= 0; i--) {
+      const f = foods[i], dx = s.x - f.x, dy = s.y - f.y;
+      if (Math.abs(dx) > reach + mag + 10 || Math.abs(dy) > reach + mag + 10) continue;
+      const d = Math.hypot(dx, dy);
+      if (d < reach) {
+        s.mass += f.m; foods.splice(i, 1);
+        if (s === me) { stats.dots++; sfx.dot(); }
+      } else if (mag && d < mag) { f.x += dx / d * 380 * dt; f.y += dy / d * 380 * dt; }
+    }
+    for (let i = powers.length - 1; i >= 0; i--) {
+      const p = powers[i];
+      if (Math.hypot(s.x - p.x, s.y - p.y) < s.r + 16) {
+        powers.splice(i, 1);
+        if (p.type === "mega") s.mass += 40; else s.pw[p.type] = p.type === "shield" ? 6 : 7;
+        if (s === me) { sfx.power(); bigText({ speed: "⚡ SPEED!", magnet: "🧲 MAGNET!", shield: "🛡 SHIELD!", mega: "🍄 MEGA GROW!" }[p.type]); }
+        setTimeout(spawnPower, 6000);
+      }
+    }
+  }
+  while (foods.length < FOOD_N) spawnFood();
+  // slime vs slime
+  for (const a of slimes) {
+    if (!a.alive) continue;
+    for (const b of slimes) {
+      if (a === b || !b.alive || b.pw.shield > 0) continue;
+      if (a.r > b.r * 1.15) {
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < a.r - b.r * .35) eat(a, b);
+      }
+    }
+  }
+  // particles
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; p.life -= dt;
+    if (p.life <= 0) parts.splice(i, 1);
+  }
+  shake = Math.max(0, shake - dt * 30);
+  if (me.alive) {
+    stats.max = Math.max(stats.max, Math.round(me.mass));
+    const first = ranking()[0] === me;
+    if (first && !wasFirst) { bigText("👑 YOU'RE #1!"); sfx.power(); }
+    wasFirst = first;
+  }
+  if (timeLeft <= 0) endRound(false);
+}
+
+function eat(a, b) {
+  a.mass += b.mass * .85; a.kills++;
+  b.alive = false; b.respawn = 2.5;
+  for (let i = 0; i < 26; i++) { const ang = rnd(0, 6.3), sp = rnd(80, 320); parts.push({ x: b.x, y: b.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: rnd(3, 3 + b.r / 6), c: b.color, life: rnd(.4, .9) }); }
+  const near = Math.hypot(b.x - me.x, b.y - me.y) < 700;
+  if (near) { sfx.gulp(); shake = Math.min(18, 6 + b.r / 8); }
+  if (a === me) {
+    stats.kills++;
+    const msgs = ["😋 You ate", "🍽 Yum! You swallowed", "💥 GULP! You ate", "🤤 Delicious:"];
+    feed(`${pick(msgs)} <b>${esc(b.name)}</b>`);
+    if (me.kills === 3) bigText("🔥 HUNGRY SLIME!"); else if (me.kills === 6) bigText("🌋 UNSTOPPABLE!"); else if (me.kills === 10) bigText("🐉 SLIME KING!");
+  } else if (b === me) {
+    sfx.dead(); setTimeout(() => endRound(true, a.name), 900);
+  } else if (near) feed(`${esc(a.name)} ate ${esc(b.name)}`);
+}
+
+function ranking() { return slimes.filter(s => s.alive || s === me).sort((x, y) => (y.alive ? y.mass : 0) - (x.alive ? x.mass : 0)); }
+
+/* ---------- drawing ---------- */
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => clamp(Math.round(c * k), 0, 255);
+  return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`;
+}
+function drawSlime(g, s, x, y, r, t) {
+  const N = 28, pts = [];
+  const sp = Math.hypot(s.vx || 0, s.vy || 0), stretch = Math.min(.12, sp / 2600);
+  for (let i = 0; i < N; i++) {
+    const a = i / N * Math.PI * 2;
+    const w = 1 + .045 * Math.sin(t * 2.2 + i * 1.7) + .03 * Math.sin(t * 3.1 - i * 2.3);
+    const along = Math.cos(a - Math.atan2(s.dy || 0, s.dx || 1));
+    const st = 1 + stretch * along * along - stretch * .5;
+    pts.push([x + Math.cos(a) * r * w * st, y + Math.sin(a) * r * w * st]);
+  }
+  g.beginPath();
+  for (let i = 0; i < N; i++) {
+    const p = pts[i], q = pts[(i + 1) % N];
+    const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
+    if (i === 0) g.moveTo(mx, my); else g.quadraticCurveTo(p[0], p[1], mx, my);
+  }
+  g.quadraticCurveTo(pts[0][0], pts[0][1], (pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2);
+  g.closePath();
+  const grad = g.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r * 1.1);
+  grad.addColorStop(0, shade(s.color, 1.25)); grad.addColorStop(1, shade(s.color, .8));
+  g.fillStyle = grad; g.fill();
+  g.lineWidth = Math.max(2, r * .07); g.strokeStyle = shade(s.color, .6); g.stroke();
+  // shine
+  g.fillStyle = "rgba(255,255,255,.35)";
+  g.beginPath(); g.ellipse(x - r * .38, y - r * .42, r * .22, r * .13, -.6, 0, 7); g.fill();
+  // eyes
+  const ex = (s.dx || 0) * r * .22, ey = (s.dy || 0) * r * .18, er = r * .17;
+  for (const side of [-1, 1]) {
+    const cx = x + side * r * .3 + ex, cy = y - r * .12 + ey;
+    g.fillStyle = "#fff"; g.beginPath(); g.ellipse(cx, cy, er, er * 1.15, 0, 0, 7); g.fill();
+    g.fillStyle = "#1b1433"; g.beginPath(); g.arc(cx + (s.dx || 0) * er * .4, cy + (s.dy || 0) * er * .4, er * .55, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(cx + (s.dx || 0) * er * .4 - er * .2, cy + (s.dy || 0) * er * .4 - er * .2, er * .18, 0, 7); g.fill();
+  }
+  // mouth
+  g.strokeStyle = shade(s.color, .45); g.lineWidth = Math.max(1.5, r * .05); g.lineCap = "round";
+  g.beginPath(); g.arc(x + ex * .8, y + r * .2 + ey * .8, r * .16, .15 * Math.PI, .85 * Math.PI); g.stroke();
+  // hat
+  if (s.hat) { g.font = `${r * .85}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(s.hat, x, y - r * .95); }
+}
+
+function draw(t) {
+  const g = ctx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = "#1b1433"; g.fillRect(0, 0, W, H);
+  if (!me) return;
+  // camera
+  const target = !running ? Math.min(W, H) / 900 * .8 : Math.min(W, H) / 900 * clamp(2.2 / Math.sqrt(me.r / 10 + 1), .38, 1.3) * (isTouch ? 1.15 : 1);
+  cam.z += (target - cam.z) * .05;
+  if (me.alive) { cam.x += (me.x - cam.x) * .15; cam.y += (me.y - cam.y) * .15; }
+  const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) : 0;
+  g.save();
+  g.translate(W / 2 + sx, H / 2 + sy); g.scale(cam.z, cam.z); g.translate(-cam.x, -cam.y);
+  const vw = W / cam.z / 2 + 60, vh = H / cam.z / 2 + 60;
+  const L = cam.x - vw, R = cam.x + vw, T = cam.y - vh, B = cam.y + vh;
+  // world
+  g.fillStyle = "#231a42"; g.fillRect(0, 0, WORLD, WORLD);
+  g.strokeStyle = "rgba(255,255,255,.05)"; g.lineWidth = 2;
+  g.beginPath();
+  for (let x = Math.max(0, Math.floor(L / 80) * 80); x <= Math.min(WORLD, R); x += 80) { g.moveTo(x, Math.max(0, T)); g.lineTo(x, Math.min(WORLD, B)); }
+  for (let y = Math.max(0, Math.floor(T / 80) * 80); y <= Math.min(WORLD, B); y += 80) { g.moveTo(Math.max(0, L), y); g.lineTo(Math.min(WORLD, R), y); }
+  g.stroke();
+  g.strokeStyle = "#f472b6"; g.lineWidth = 10; g.strokeRect(0, 0, WORLD, WORLD);
+  // food
+  for (const f of foods) {
+    if (f.x < L || f.x > R || f.y < T || f.y > B) continue;
+    g.fillStyle = f.c; g.beginPath(); g.arc(f.x, f.y, f.r * (1 + .12 * Math.sin(t * 3 + f.ph)), 0, 7); g.fill();
+  }
+  // powerups
+  g.textAlign = "center"; g.textBaseline = "middle";
+  for (const p of powers) {
+    if (p.x < L || p.x > R || p.y < T || p.y > B) continue;
+    const by = Math.sin(t * 3 + p.ph) * 5;
+    g.fillStyle = "rgba(255,255,255,.15)"; g.beginPath(); g.arc(p.x, p.y + by, 20 + Math.sin(t * 5 + p.ph) * 2, 0, 7); g.fill();
+    g.font = "24px serif"; g.fillText(POWERS[p.type], p.x, p.y + by + 1);
+  }
+  // particles
+  for (const p of parts) { g.globalAlpha = Math.max(0, p.life * 1.6); g.fillStyle = p.c; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); }
+  g.globalAlpha = 1;
+  // slimes, small first
+  const vis = slimes.filter(s => s.alive && s.x + s.r > L && s.x - s.r < R && s.y + s.r > T && s.y - s.r < B).sort((a, b) => a.r - b.r);
+  for (const s of vis) {
+    if (s.pw.shield > 0) {
+      g.strokeStyle = `rgba(96,165,250,${.5 + .3 * Math.sin(t * 8)})`; g.lineWidth = 5; g.setLineDash([12, 8]); g.lineDashOffset = -t * 40;
+      g.beginPath(); g.arc(s.x, s.y, s.r + 12, 0, 7); g.stroke(); g.setLineDash([]);
+    }
+    if (s.pw.magnet > 0) { g.strokeStyle = "rgba(248,113,113,.25)"; g.lineWidth = 2; g.beginPath(); g.arc(s.x, s.y, s.r + 170, 0, 7); g.stroke(); }
+    drawSlime(g, s, s.x, s.y, s.r, s.wob);
+    // name
+    const fs = Math.max(13, s.r * .3) / Math.max(.6, cam.z) * Math.min(1, cam.z * 1.4);
+    g.font = `700 ${fs}px Fredoka, sans-serif`;
+    g.lineWidth = fs * .22; g.strokeStyle = "rgba(0,0,0,.55)"; g.fillStyle = "#fff";
+    g.strokeText(s.name, s.x, s.y + s.r + fs * .9); g.fillText(s.name, s.x, s.y + s.r + fs * .9);
+    // danger indicator vs me
+    if (s !== me && me.alive) {
+      if (s.r > me.r * 1.15) { g.fillStyle = "#f87171"; g.fillText("⚠", s.x, s.y - s.r - fs * 1.4 - (s.hat ? s.r * .5 : 0)); }
+    }
+  }
+  g.restore();
+  // joystick
+  if (joy) {
+    g.globalAlpha = .35; g.fillStyle = "#fff";
+    g.beginPath(); g.arc(joy.ox, joy.oy, 50, 0, 7); g.fill();
+    g.globalAlpha = .6; const dx = joy.x - joy.ox, dy = joy.y - joy.oy, l = Math.min(45, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+    g.beginPath(); g.arc(joy.ox + Math.cos(a) * l, joy.oy + Math.sin(a) * l, 24, 0, 7); g.fill();
+    g.globalAlpha = 1;
+  }
+  // minimap
+  if (!running) return;
+  const mm = Math.min(130, W * .28), mx = 12, my = H - mm - (isTouch ? 12 : 34);
+  g.fillStyle = "rgba(15,10,30,.6)"; g.fillRect(mx, my, mm, mm);
+  g.strokeStyle = "rgba(255,255,255,.2)"; g.lineWidth = 1; g.strokeRect(mx, my, mm, mm);
+  for (const s of slimes) {
+    if (!s.alive) continue;
+    const big = s.r > me.r * 1.15;
+    if (s !== me && !big && s.r < 30) continue;
+    g.fillStyle = s === me ? "#fff" : big ? "#f87171" : s.color;
+    g.beginPath(); g.arc(mx + s.x / WORLD * mm, my + s.y / WORLD * mm, s === me ? 4 : clamp(s.r / 25, 2, 6), 0, 7); g.fill();
+  }
+}
+
+/* ---------- HUD ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+let hudT = 0;
+function hud(dt) {
+  if ((hudT -= dt) > 0) return; hudT = .2;
+  const tl = Math.max(0, Math.ceil(timeLeft));
+  $("timer").textContent = `${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, "0")}`;
+  $("timer").classList.toggle("low", tl <= 15);
+  $("mass").textContent = `Size ${Math.round(me.mass)}${me.pw.speed > 0 ? " ⚡" : ""}${me.pw.magnet > 0 ? " 🧲" : ""}${me.pw.shield > 0 ? " 🛡" : ""}`;
+  const rk = ranking(), myPos = rk.indexOf(me);
+  let html = "<h4>🏆 Biggest slimes</h4>";
+  rk.slice(0, 5).forEach((s, i) => html += `<div class="${s === me ? "me" : ""}">${["👑", "2.", "3.", "4.", "5."][i]} ${esc(s.name)} <span style="opacity:.6">${Math.round(s.mass)}</span></div>`);
+  if (myPos > 4) html += `<div class="me">${myPos + 1}. ${esc(me.name)} <span style="opacity:.6">${Math.round(me.mass)}</span></div>`;
+  $("lb").innerHTML = html;
+}
+function feed(html) {
+  const d = document.createElement("div"); d.innerHTML = html; $("feed").prepend(d);
+  setTimeout(() => d.remove(), 2600);
+  while ($("feed").children.length > 3) $("feed").lastChild.remove();
+}
+function bigText(txt) { const b = $("big"); b.textContent = txt; b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
+
+/* ---------- end ---------- */
+function endRound(died, killer) {
+  if (!running) return;
+  running = false;
+  const rk = ranking();
+  const place = died ? null : rk.indexOf(me) + 1;
+  const best = store.get("slime:best", 0);
+  const newBest = stats.max > best;
+  if (newBest) store.set("slime:best", stats.max);
+  $("hud").classList.add("hidden"); $("boostBtn").classList.add("hidden");
+  if (died) {
+    $("overTitle").innerHTML = `😵 You got eaten by <span style="color:#f87171">${esc(killer)}</span>!`;
+    $("overPlace").textContent = "🫠";
+  } else {
+    $("overTitle").textContent = place === 1 ? "🎉 YOU WIN! Biggest slime!" : "⏰ Time's up!";
+    $("overPlace").textContent = place === 1 ? "👑 #1" : `#${place}`;
+    if (place === 1) sfx.win();
+  }
+  $("sMax").textContent = stats.max; $("sKills").textContent = stats.kills; $("sDots").textContent = stats.dots;
+  $("podium").innerHTML = "<b>Final leaderboard</b><br>" + rk.filter(s => s.alive).slice(0, 3).map((s, i) =>
+    `${["🥇", "🥈", "🥉"][i]} ${esc(s.name)} · ${Math.round(s.mass)}`).join("<br>");
+  $("overBest").textContent = newBest ? `⭐ New personal best: ${stats.max}!` : `Your best: ${best}`;
+  $("over").classList.remove("hidden");
+  window._last = { died, place, ...stats };
+}
+
+/* ---------- menu ---------- */
+function drawPreview() {
+  const p = $("preview").getContext("2d"), t = performance.now() / 1000;
+  p.clearRect(0, 0, 240, 240);
+  drawSlime(p, { color: myColor, hat: myHat, dx: Math.cos(t) * .4, dy: .3, vx: 0, vy: 0 }, 120, 140, 70, t * 2);
+}
+function buildMenu() {
+  $("name").value = store.get("slime:name", "");
+  $("colors").innerHTML = COLORS.map(c => `<button class="sw ${c === myColor ? "on" : ""}" style="background:${c}" data-c="${c}" aria-label="colour"></button>`).join("");
+  $("hats").innerHTML = HATS.map(h => `<button class="hat ${h === myHat ? "on" : ""}" data-h="${h}">${h || "∅"}</button>`).join("");
+  document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { myColor = b.dataset.c; store.set("slime:color", myColor); tone(700, .05); buildMenu(); });
+  document.querySelectorAll("[data-h]").forEach(b => b.onclick = () => { myHat = b.dataset.h; store.set("slime:hat", myHat); tone(900, .05); buildMenu(); });
+  const best = store.get("slime:best", 0);
+  $("bestTxt").textContent = best ? `⭐ Your best size: ${best}` : "";
+}
+$("playBtn").onclick = () => { tone(500, .1); newRound(); };
+$("againBtn").onclick = () => { tone(500, .1); newRound(); };
+$("menuBtn").onclick = () => { $("over").classList.add("hidden"); $("menu").classList.remove("hidden"); buildMenu(); };
+$("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+$("soundBtn").onclick = () => { soundOn = !soundOn; store.set("slime:sound", soundOn); $("soundBtn").textContent = soundOn ? "🔊" : "🔇"; };
+$("shareBtn").onclick = () => {
+  const l = window._last || stats;
+  const txt = `🟢 Slime Party: I grew to size ${l.max} and ate ${l.kills} slimes${l.place ? `, finishing #${l.place}` : ""}! Can you beat me? https://y4sh-0day.github.io/Top/slime.html`;
+  navigator.clipboard?.writeText(txt).then(() => $("shareBtn").textContent = "Copied! ✅", () => {});
+};
+buildMenu();
+
+/* ---------- demo arena behind the menu ---------- */
+function demo() {
+  slimes = []; foods = []; powers = [];
+  me = makeSlime("", myColor, "", 1, true); me.alive = false; me.x = me.y = WORLD / 2;
+  for (let i = 0; i < 18; i++) slimes.push(makeSlime(pick(BOT_NAMES), pick(COLORS), Math.random() < .5 ? pick(HATS.slice(1)) : "", rnd(15, 200), true));
+  slimes.forEach(s => { s.x = WORLD / 2 + rnd(-700, 700); s.y = WORLD / 2 + rnd(-500, 500); });
+  for (let i = 0; i < FOOD_N; i++) spawnFood();
+  cam.x = cam.y = WORLD / 2; cam.z = .9;
+}
+demo();
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const t = now / 1000;
+  if (running) { update(dt); hud(dt); }
+  else if (!$("menu").classList.contains("hidden")) {
+    // menu demo: bots wander
+    for (const s of slimes) { if (!s.alive || !s.bot) continue; if ((s.think -= dt) <= 0) { s.think = rnd(1, 3); const a = rnd(0, 6.3); s.tx = Math.cos(a); s.ty = Math.sin(a); }
+      s.dx += (s.tx - s.dx) * dt * 2; s.dy += (s.ty - s.dy) * dt * 2; const sp = 60; s.vx = s.dx * sp; s.vy = s.dy * sp;
+      s.x = clamp(s.x + s.vx * dt, WORLD / 2 - 900, WORLD / 2 + 900); s.y = clamp(s.y + s.vy * dt, WORLD / 2 - 700, WORLD / 2 + 700); s.wob += dt * 3; }
+    drawPreview();
+  }
+  draw(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
