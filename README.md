@@ -39,6 +39,19 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## 🌌 Gravity Flip
+
+A neon runner where you can't jump. You can only **flip gravity**: **https://y4sh-0day.github.io/Top/flip.html**
+
+- Tap, click or press `Space` to flip between the floor and the ceiling (only while you're touching one)
+- Dodge spike strips, pits, pillars, spinning saw blades and lasers that switch sides
+- It gets faster every 400 m. Each new **sector** changes the colour
+- Near-miss combos give bonus points
+- Power-ups: 🛡 shield (survive one hit), 🧲 coin magnet, ⏳ slow motion
+- Spend the coins you collect on **8 skins**, including Prism and Inferno
+- A synthwave soundtrack made in your browser, a saved best score and a **BEST** line on the track
+- Works on a computer (keyboard or mouse) and on a phone (tap; landscape is best)
+
 ## 🐍 Neon Serpents: multiplayer
 
 A neon snake battle you can play **with friends**: **https://y4sh-0day.github.io/Top/snake.html**
