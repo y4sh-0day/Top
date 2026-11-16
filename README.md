@@ -39,6 +39,19 @@ python3 -m http.server 8000
 
 **Keys:** `Enter` submits · `Tab` skips (in Recall mode it reveals the answer) · `Esc` returns to the menu
 
+## 🛡️ Hacker OS: learn real security skills
+
+A story game on a fake hacker desktop: **https://y4sh-0day.github.io/Top/hackeros.html**
+
+You're a new analyst at **NULLSEC**, a team that helps companies after they get hacked. A robotics company's server has been broken into, and your mentor **Ghost** teaches you how to investigate it and clean it up.
+
+- **Every command is real**: `ls`, `cd`, `grep`, `find`, pipes, `wc`, `base64`, `tr`, `xxd`, `sha256sum`, `ip`, `ping`, `ssh`, `sudo`, `ps`, `ss`, `kill`, `chmod`, `ufw` and more. They work the same way on Linux and macOS
+- **6 chapters, 16 missions**: Linux basics → log analysis → decoding → networking → incident response → hardening the server
+- A **"Real World" card** after each new command explains how professionals use it, and a **Notes** cheat sheet saves them all
+- A desktop with windows you can drag: Terminal (with Tab completion and history), Ghost chat, Mail, Missions and Notes
+- Hints when you're stuck, XP and ranks (Trainee → Threat Hunter), 3 themes, sound, and progress that saves automatically
+- Fully simulated and focused on defence: nothing leaves your browser
+
 ## 🌌 Gravity Flip
 
 A neon runner where you can't jump. You can only **flip gravity**: **https://y4sh-0day.github.io/Top/flip.html**

